@@ -52,13 +52,8 @@ public class TemporaryNode implements TemporaryNodeInterface {
             writer.flush();
             String response = reader.readLine();
             String[] responceParts = response.split(" ");
-            if(responceParts[0].equals("START")){
-                return true;
-            } else {
-                System.out.println("Could not connect to " + startingNodeAddress);
-                System.out.println(response);
-                return false;
-            }
+            System.out.println("TemporaryNode received: " + response);
+            return true;
         } catch (IOException e) {
             System.out.println("Could not resolve " + startingNodeAddress);
             return false;

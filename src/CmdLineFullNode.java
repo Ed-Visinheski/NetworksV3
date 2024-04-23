@@ -16,7 +16,7 @@ public class CmdLineFullNode {
         } else {
 	    // A full node that is running on the network to be a first point of contact
             String startingNodeName = args[0];
-	    String startingNodeAddress = args[1];
+            String startingNodeAddress = args[1];
 
 	    // These give the IP Address and port for other nodes to contact this one
 	    String ipAddress = args[2];
@@ -36,13 +36,12 @@ public class CmdLineFullNode {
 	    // Full nodes need to be able to accept incoming connections
 	    if (fn.listen(ipAddress, portNumber)) {
 
-		// Become part of the network
-		fn.handleIncomingConnections(startingNodeName, startingNodeAddress);
+            // Become part of the network
+            fn.handleIncomingConnections(startingNodeName, startingNodeAddress);
 		
 	    } else {
 		System.err.println("Could not listen for incoming connections");
 	    }
-
             return;
         }
     }

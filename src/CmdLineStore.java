@@ -16,10 +16,10 @@ public class CmdLineStore {
         } else {
 	    // A full node that is running on the network to be a first point of contact
             String startingNodeName = args[0];
-	    String startingNodeAddress = args[1];
+			String startingNodeAddress = args[1];
 
-	    String key = args[2] + '\n';   // All keys have a new line at the end
-	    String value = args[3] + '\n'; // All values have a new line at the end
+			String key = args[2] + '\n';   // All keys have a new line at the end
+			String value = args[3] + '\n'; // All values have a new line at the end
 
             // Use a TemporaryNode to store the (key, value) pair on the network
             TemporaryNode tn = new TemporaryNode();
@@ -29,6 +29,7 @@ public class CmdLineStore {
 
 		// Store the (key, value) pair
 		if (tn.store(key, value)) {
+
 		    System.out.println("Store worked! :-)");
 		} else {
 		    System.out.println("Store failed! :-(");

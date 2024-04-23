@@ -13,34 +13,33 @@ public class CmdLineGet {
             System.err.println("Usage error!");
             System.err.println("DSTGetCmdLine startingNodeName startingNodeAddress key");
             return;
-        } else {
+        }
+		else {
 	    // A full node that is running on the network to be a first point of contact
             String startingNodeName = args[0];
-	    String startingNodeAddress = args[1];
+			String startingNodeAddress = args[1];
 
-	    String key = args[2] + '\n';   // All keys have a new line at the end
+			String key = args[2] + '\n';   // All keys have a new line at the end
 
             // Use a TemporaryNode to get the value corresponding to key from the network
             TemporaryNode tn = new TemporaryNode();
 
-	    // Make contact with the 2D#4 network
-	    if (tn.start(startingNodeName, startingNodeAddress)) {
-
-		// Get the value) pair
-		String value = tn.get(key);
-
-		if (value != null) {
-		    System.out.println(value);
-		} else {
-		    System.err.println("Value not found");
+			// Make contact with the 2D#4 network
+			if (tn.start(startingNodeName, startingNodeAddress)) {
+				// Get the value pair
+				String value = tn.get(key);
+				if (value != null) {
+					System.out.println(value);
+				}
+				else {
+					System.err.println("Value not found");
+				}
+			}
+			else {
+				System.err.println("Could not contact network?");
+			}
+			return;
 		}
-
-	    } else {
-		System.err.println("Could not contact network?");
-	    }
-
-            return;
-        }
-    }
+	}
 }
 // DO NOT EDIT ends

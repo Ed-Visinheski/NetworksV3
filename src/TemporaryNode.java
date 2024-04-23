@@ -46,12 +46,11 @@ public class TemporaryNode implements TemporaryNodeInterface {
             writer = new OutputStreamWriter(socket.getOutputStream());
 
             System.out.println("TemporaryNode connected to " + startingNodeName + " at " + startingNodeAddress);
+            String response = reader.readLine();
+            System.out.println("TemporaryNode received: " + response);
             String startMessage = "START 1 " + nodeName + "\n";
             writer.write(startMessage);
             writer.flush();
-
-            String response = reader.readLine();
-            System.out.println("TemporaryNode received: " + response);
             return true;
         } catch (IOException e) {
             System.out.println("Failed to connect: " + e.getMessage());

@@ -54,6 +54,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String[] responceParts = response.split(" ");
             System.out.println("TemporaryNode received: " + response);
             return true;
+            //Commit comment
         } catch (IOException e) {
             System.out.println("Could not resolve " + startingNodeAddress);
             return false;

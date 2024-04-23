@@ -30,34 +30,36 @@ public class TemporaryNode implements TemporaryNodeInterface {
     private String contactNodeAddress;
 
     public boolean start(String startingNodeName, String startingNodeAddress) {
-        contactNodeName = startingNodeName;
-        contactNodeAddress = startingNodeAddress;
-
         try {
-            System.out.println("Please name this node:");
-            BufferedReader systemReader = new BufferedReader(new InputStreamReader(System.in));
-            nodeName = systemReader.readLine();
+            this.contactNodeName = startingNodeName;
+            this.contactNodeAddress = startingNodeAddress;
+            nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode1Test10";
             String[] parts = startingNodeAddress.split(":");
+            if (parts.length != 2) {
+                System.out.println("Invalid address format. Please use IP:Port format.");
+                return false;
+            }
             String ipAddress = parts[0];
             int port = Integer.parseInt(parts[1]);
 
-            socket = new Socket(InetAddress.getByName("10.0.0.164"), 2000);
-            reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            writer = new OutputStreamWriter(socket.getOutputStream());
-            System.out.println("Connected to server successfully.");
+            this.socket = new Socket(InetAddress.getByName("10.0.0.164"), 2000);
+            this.reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+            this.writer = new OutputStreamWriter(this.socket.getOutputStream());
 
-            System.out.println("TemporaryNode connected to " + startingNodeName + " at " + startingNodeAddress);
-            String response = reader.readLine();
-            System.out.println("TemporaryNode received: " + response);
-            String startMessage = "START 1 " + nodeName + "\n";
-            writer.write(startMessage);
-            writer.flush();
+            System.out.println("TemporaryNode connected to " + startingNodeName + " at " + ipAddress + ":" + port);
+            String startMessage = "START 1 " + this.nodeName + "\n";
+            this.writer.write(startMessage);
+            this.writer.flush();
+            String response = this.reader.readLine();
+            System.out.println("Response from server: " + response);
+
             return true;
         } catch (IOException e) {
             System.out.println("Failed to connect: " + e.getMessage());
             return false;
         }
     }
+
 
 
     public boolean store(String key, String value) {
@@ -128,6 +130,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             // Implement this!
             // Return the value if the key is found
             // Return null if the key is not found
+        System.out.println("Getting key: " + key);
             try {
                 //Calculate number of lines in the key
                 String[] keyLines = key.split("\n");
@@ -154,6 +157,17 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 return null;
             }
     }
+
+    public void closeConnection() {
+        try {
+            if (writer != null) writer.close();
+            if (reader != null) reader.close();
+            if (socket != null) socket.close();
+        } catch (IOException e) {
+            System.err.println("Error closing network resources: " + e.getMessage());
+        }
+    }
+
 
 
 }

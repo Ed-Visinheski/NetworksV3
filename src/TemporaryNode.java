@@ -41,9 +41,10 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String ipAddress = parts[0];
             int port = Integer.parseInt(parts[1]);
 
-            socket = new Socket(InetAddress.getByName(ipAddress), port);
+            socket = new Socket(InetAddress.getByName("10.0.0.164"), 2000);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new OutputStreamWriter(socket.getOutputStream());
+            System.out.println("Connected to server successfully.");
 
             System.out.println("TemporaryNode connected to " + startingNodeName + " at " + startingNodeAddress);
             String response = reader.readLine();

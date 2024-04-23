@@ -52,7 +52,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             writer.flush();
             String response = reader.readLine();
             String[] responceParts = response.split(" ");
-            if(responceParts.equals("START")){
+            if(responceParts[0].equals("START")){
                 return true;
             } else {
                 System.out.println("Could not connect to " + startingNodeAddress);

@@ -139,11 +139,23 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     keyMessage += line + "\n";
                 }
                 writer.write(keyMessage);
+                writer.flush();
+                String response = reader.readLine();
+                String[] responseParts = response.split(" ");
+                if(responseParts[0].equals("VALUE")){
+                    int valueLines = Integer.parseInt(responseParts[1]);
+                    String value = "";
+                    for (int i = 0; i < valueLines; i++) {
+                        value += reader.readLine() + "\n";
+                    }
+                    return value;
+                } else {
+                    return null;
+                }
             } catch (Exception e) {
                 System.out.println("Could not hash key");
                 return null;
             }
-            return null;
     }
 
 

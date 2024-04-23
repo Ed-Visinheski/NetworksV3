@@ -9,6 +9,7 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
@@ -28,59 +29,60 @@ public class TemporaryNode implements TemporaryNodeInterface {
     private String contactNodeName;
     private String contactNodeAddress;
 
-
     public boolean start(String startingNodeName, String startingNodeAddress) {
-	// Implement this!
-	// Return true if the 2D#4 network can be contacted
         contactNodeName = startingNodeName;
         contactNodeAddress = startingNodeAddress;
 
-        try{
+        try {
             System.out.println("Please name this node:");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            nodeName = reader.readLine();
+            BufferedReader systemReader = new BufferedReader(new InputStreamReader(System.in));
+            nodeName = systemReader.readLine();
             String[] parts = startingNodeAddress.split(":");
             String ipAddress = parts[0];
             int port = Integer.parseInt(parts[1]);
+
             socket = new Socket(InetAddress.getByName(ipAddress), port);
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new OutputStreamWriter(socket.getOutputStream());
-            socket = new Socket(ipAddress, port);
+
             System.out.println("TemporaryNode connected to " + startingNodeName + " at " + startingNodeAddress);
             String startMessage = "START 1 " + nodeName + "\n";
             writer.write(startMessage);
             writer.flush();
+
             String response = reader.readLine();
-            String[] responceParts = response.split(" ");
             System.out.println("TemporaryNode received: " + response);
             return true;
-            //Commit comment
         } catch (IOException e) {
-            System.out.println("Could not resolve " + startingNodeAddress);
+            System.out.println("Failed to connect: " + e.getMessage());
             return false;
         }
     }
+
 
     public boolean store(String key, String value) {
-	    // Implement this!
-	    // Return true if the store worke
         HashID hasher = new HashID();
-
-        // Hash the key
-        // Send this hashed key to the full node at the starting node address given
-
-        // If the full node responds with a STORED message, return true
         try {
             byte[] keyBytes = hasher.computeHashID(key + '\n');
+            String hashKey = new String(keyBytes, StandardCharsets.UTF_8);
+
+            String storeCommand = "STORE " + hashKey + " " + value + "\n";
+            writer.write(storeCommand);
+            writer.flush();
+
+            String response = reader.readLine();
+            if ("STORED".equals(response)) {
+                return true;
+            } else {
+                System.out.println("Failed to store: Server responded with " + response);
+                return false;
+            }
         } catch (Exception e) {
-            System.out.println("Could not hash key");
+            System.out.println("Error during store operation: " + e.getMessage());
             return false;
         }
-
-
-	// Return false if the store failed
-	return true;
     }
+
 
 
     //6.5. GET? request
@@ -126,7 +128,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             // Implement this!
             // Return the value if the key is found
             // Return null if the key is not found
-            HashID hasher = new HashID();
             try {
                 //Calculate number of lines in the key
                 String[] keyLines = key.split("\n");

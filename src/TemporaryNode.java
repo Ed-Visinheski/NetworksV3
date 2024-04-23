@@ -150,8 +150,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     for (int i = 0; i < valueLines; i++) {
                         value += reader.readLine() + "\n";
                     }
-                    writer.write("END GET Received\n");
-                    closeConnection();
                     return value;
                 } else {
                     return null;

@@ -65,26 +65,75 @@ public class TemporaryNode implements TemporaryNodeInterface {
     }
 
 
+    //6.4. PUT? Request
+    //
+    //   The requester MAY send a PUT request.  This will attempt to add a
+    //   (key, value) pair to the hash table.  A PUT request is three or
+    //   more lines.  The first line has two parts:
+    //
+    //   PUT? <number> <number>
+    //
+    //   The first number indicates the how many lines of key follow.  This MUST
+    //   be at least one. The second number indicates how many line of value
+    //   follow.  This MUST be at least one.
+    //
+    //   When the responder gets a PUT request it must compute the hashID
+    //   for the value to be stored.  Then it must check the network
+    //   directory for the three closest nodes to the key's hashID.  If the
+    //   responder is one of the three nodes that are closest then
+    //   it MUST store the (key, value) pair and MUST respond with a single
+    //   line:
+    //
+    //   SUCCESS
+    //
+    //   If the responder finds three nodes that are closer to the hashID
+    //   then it MUST refuse to store the value and MUST respond with a
+    //   single line:
+    //
+    //   FAILED
+    //
+    //   For example if a requester sends:
+    //
+    //   PUT? 1 2
+    //   Welcome
+    //   Hello
+    //   World!
+    //
+    //   The response might store the pair ("Welcome\n","Hello\nWorld!\n")
+    //   and return
+    //
+    //   SUCCESS
+    //
+    //   or
+    //
+    //   FAILED
+    //
+    //   depending on the distance between the responder's hashID and the
+    //   key's hashID and what other nodes are in its network directory.
+
 
     public boolean store(String key, String value) {
-        HashID hasher = new HashID();
-        try {
-            byte[] keyBytes = hasher.computeHashID(key + '\n');
-            String hashKey = new String(keyBytes, StandardCharsets.UTF_8);
-
-            String storeCommand = "STORE " + hashKey + " " + value + "\n";
-            writer.write(storeCommand);
+        try{
+            //Calculate number of lines in the key and value
+            String[] keyLines = key.split("\n");
+            String[] valueLines = value.split("\n");
+            String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
+            for (String line : keyLines) {
+                keyMessage += line + "\n";
+            }
+            for (String line : valueLines) {
+                keyMessage += line + "\n";
+            }
+            writer.write(keyMessage);
             writer.flush();
-
             String response = reader.readLine();
-            if ("STORED".equals(response)) {
+            if(response.equals("SUCCESS")){
                 return true;
             } else {
-                System.out.println("Failed to store: Server responded with " + response);
                 return false;
             }
         } catch (Exception e) {
-            System.out.println("Error during store operation: " + e.getMessage());
+                System.out.println("FAILED");
             return false;
         }
     }

@@ -42,7 +42,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String ipAddress = parts[0];
             int port = Integer.parseInt(parts[1]);
 
-            this.socket = new Socket(InetAddress.getByName("10.0.0.164"), 2000);
+            socket = new Socket(ipAddress, port);
             this.reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
             this.writer = new OutputStreamWriter(this.socket.getOutputStream());
 

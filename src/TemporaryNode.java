@@ -1,3 +1,11 @@
+// IN2011 Computer Networks
+// Coursework 2023/2024
+//
+// Submission by
+// Eduardo Cook Visinheski
+// 220057799
+// eduardo.cook-visinheski@city.ac.uk
+
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -7,132 +15,113 @@ import java.util.Random;
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
 
-    public boolean start(String poo1, String poo2);
-    public boolean store(String poo14, String poo15);
-    public String get(String poo14);
+    public boolean start(String poo8, String poo9);
+    public boolean store(String poo15, String poo16);
+    public String get(String poo15);
 }
 // DO NOT EDIT ends
 
 public class TemporaryNode implements TemporaryNodeInterface {
-    private BufferedReader poo9;
-    private Writer poo10;
-    private Socket poo8;
-    private String poo21 = "1";
-    private String poo3;
-    private String poo22;
-    private String poo23;
-    private Random poo4 = new Random();
-    private String poo1;
+    private BufferedReader poo1;
+    private Writer poo2;
+    private Socket poo3;
+    private String poo4;
+    private String poo5;
+    private String poo6;
+    private Random poo7 = new Random();
+    private String poo8;
 
-    public boolean start(String poo1, String poo2) {
+    public boolean start(String poo8, String poo9) {
 
         try {
-            poo22 = poo1;
-            poo23 = poo2;
-            poo3 = "eduardo.cook-visinheski@city.ac.uk:Test" + poo4.nextInt(10);
-            String[] poo5 = poo2.split(":");
-            if (poo5.length != 2) {
-                System.out.println("Invalid poo.");
+            poo5 = poo8;
+            poo6 = poo9;
+            poo4 = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + poo7.nextInt(100);
+            String[] poo10 = poo9.split(":");
+            if (poo10.length != 2) {
+                System.out.println("Invalid address format.");
                 return false;
             }
-            String poo6 = poo5[0];
-            int poo7 = Integer.parseInt(poo5[1]);
+            String poo11 = poo10[0];
+            int poo12 = Integer.parseInt(poo10[1]);
 
-            poo8 = new Socket(poo6, poo7);
-            poo9 = new BufferedReader(new InputStreamReader(this.poo8.getInputStream()));
-            poo10 = new OutputStreamWriter(this.poo8.getOutputStream());
+            poo3 = new Socket(poo11, poo12);
+            poo1 = new BufferedReader(new InputStreamReader(this.poo3.getInputStream()));
+            poo2 = new OutputStreamWriter(this.poo3.getOutputStream());
 
-            //System.out.println("TemporaryNode connected to " + poo1 + " at " + poo6 + ":" + poo7);
-            String poo11 = "START 1 " + poo3 + "\n";
-            poo10.write(poo11);
-            poo10.flush();
-            String poo12 = poo9.readLine();
-            System.out.println("From poo: " + poo12);
+            String poo13 = "START 1 " + poo4 + "\n";
+            poo2.write(poo13);
+            poo2.flush();
+            System.out.println("Sending message: " + poo13);
+            String poo14 = poo1.readLine();
+            System.out.println("Response from server: " + poo14);
             return true;
-        } catch (IOException poo13) {
-            System.out.println("Failed to poo: " + poo13.getMessage());
+        } catch (IOException e) {
+            System.out.println("Failed to connect: " + e.getMessage());
             return false;
         }
     }
 
-    public boolean store(String poo14, String poo15) {
+
+    public boolean store(String poo15, String poo16) {
         try{
-            //Calculate number of lines in the poo14 and poo15
-            String[] poo16 = poo14.split("\n");
+            //Calculate number of lines in the poo15 and poo16
             String[] poo17 = poo15.split("\n");
-            String poo18 = "PUT? " + poo16.length + " " + poo17.length + "\n";
-            for (String poo19 : poo16) {
-                poo18 += poo19 + "\n";
+            String[] poo18 = poo16.split("\n");
+            String poo19 = "PUT? " + poo17.length + " " + poo18.length + "\n";
+            System.out.println("Key message: " + poo19);
+            for (String poo20 : poo17) {
+                poo19 += poo20 + "\n";
             }
-            for (String poo19 : poo17) {
-                poo18 += poo19 + "\n";
+            for (String poo20 : poo18) {
+                poo19 += poo20 + "\n";
             }
-            poo10.write(poo18);
-            poo10.flush();
-            System.out.println("Sent poo: " + poo18);
-            String poo12 = poo9.readLine();
-            if(poo12.equals("SUCCESS")){
-                poo10.write("END poo Stored Successfully\n");
-                poo10.flush();
-                closeConnection();
+            poo2.write(poo19);
+            poo2.flush();
+            System.out.println("Sending message: " + poo19);
+            String poo14 = poo1.readLine();
+            if(poo14.equals("SUCCESS")){
+                poo2.write("END Message Stored Successfully\n");
+                poo2.flush();
+
                 return true;
             } else {
-                poo10.write("END poo Storage Failed\n");
-                closeConnection();
+                poo2.write("END Message Storage Failed\n");
+
                 return false;
             }
-        } catch (Exception poo13) {
-            System.out.println("pooed");
-            closeConnection();
+        } catch (Exception e) {
+            System.out.println("FAILED");
             return false;
         }
     }
 
-    public String get(String poo14) {
-        System.out.println("Getting poo14: " + poo14);
+    public String get(String poo15) {
+        System.out.println("Getting poo15: " + poo15);
         try {
-            String[] poo16 = poo14.split("\n");
-            String poo18 = "GET? " + poo16.length + "\n";
-            for (String poo19 : poo16) {
-                poo18 += poo19 + "\n";
+            String[] poo17 = poo15.split("\n");
+            String poo19 = "GET? " + poo17.length + "\n";
+            for (String poo20 : poo17) {
+                poo19 += poo20 + "\n";
             }
-            poo10.write(poo18);
-            poo10.flush();
-            String poo12 = poo9.readLine();
-            String[] poo20 = poo12.split(" ");
-            if(poo20[0].equals("poo15")){
-                int poo17 = Integer.parseInt(poo20[1]);
-                String poo15 = "";
-                for (int i = 0; i < poo17; i++) {
-                    poo15 += poo9.readLine() + "\n";
+            poo2.write(poo19);
+            poo2.flush();
+            String poo14 = poo1.readLine();
+            String[] poo21 = poo14.split(" ");
+            if(poo21[0].equals("VALUE")){
+                int poo18 = Integer.parseInt(poo21[1]);
+                String poo16 = "";
+                for (int i = 0; i < poo18; i++) {
+                    poo16 += poo1.readLine() + "\n";
                 }
-                poo10.write("END poo Retrieved Successfully\n");
-                poo10.flush();
-                closeConnection();
-                return poo15;
+                return poo16;
             } else {
-                poo10.write("END poo Not Found\n");
-                poo10.flush();
-                closeConnection();
                 return null;
             }
-        } catch (Exception poo13) {
-            System.out.println("Could not hash poo14");
-            closeConnection();
+        } catch (Exception e) {
+            System.out.println("Could not hash poo15");
             return null;
         }
     }
-
-    public void closeConnection() {
-        try {
-            if (poo10 != null) poo10.close();
-            if (poo9 != null) poo9.close();
-            if (poo8 != null) poo8.close();
-        } catch (IOException poo13) {
-            System.err.println("Error closing network resources: " + poo13.getMessage());
-        }
-    }
-
-
 
 }

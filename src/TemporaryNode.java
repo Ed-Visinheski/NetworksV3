@@ -53,6 +53,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String startMessage = "START 1 " + this.nodeName + "\n";
             this.writer.write(startMessage);
             this.writer.flush();
+            System.out.println("Sending message: " + startMessage);
             String response = this.reader.readLine();
             System.out.println("Response from server: " + response);
             return true;
@@ -115,14 +116,15 @@ public class TemporaryNode implements TemporaryNodeInterface {
             //Calculate number of lines in the key and value
             String[] keyLines = key.split("\n");
             String[] valueLines = value.split("\n");
-            String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
-            System.out.println("Key message: " + keyMessage);
-            for (String line : keyLines) {
-                keyMessage += line + "\n";
-            }
-            for (String line : valueLines) {
-                keyMessage += line + "\n";
-            }
+//            String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
+//            System.out.println("Key message: " + keyMessage);
+//            for (String line : keyLines) {
+//                keyMessage += line + "\n";
+//            }
+//            for (String line : valueLines) {
+//                keyMessage += line + "\n";
+//            }
+            String keyMessage = "PUT? 1 1\neduardo.cook-visinheski@city.ac.uk\nWorking\n";
             writer.write(keyMessage);
             System.out.println("Sending message: " + keyMessage);
             writer.flush();

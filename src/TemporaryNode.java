@@ -87,10 +87,10 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             String[] poo16 = poo14.split("\n");
             String poo18 = "GET? " + poo16.length + "\n";
-            System.out.println("poo18: " + poo18);
             for (String poo19 : poo16) {
                 poo18 += poo19 + "\n";
             }
+            System.out.println("poo18: " + poo18);
             poo10.write(poo18);
             poo10.flush();
             String poo12 = poo9.readLine();

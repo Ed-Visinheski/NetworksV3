@@ -37,7 +37,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             contactNodeName = startingNodeName;
             contactNodeAddress = startingNodeAddress;
-            nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
+            nodeName = "aaaaa" + random.nextInt(10000);
             String[] parts = startingNodeAddress.split(":");
             if (parts.length != 2) {
                 System.out.println("Invalid address format. Please use IP:Port format.");

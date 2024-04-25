@@ -1,11 +1,3 @@
-// IN2011 Computer Networks
-// Coursework 2023/2024
-//
-// Submission by
-// Eduardo Cook Visinheski
-// 220057799
-// eduardo.cook-visinheski@city.ac.uk
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -15,211 +7,111 @@ import java.util.Random;
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
 
-    public boolean start(String startingNodeName, String startingNodeAddress);
-    public boolean store(String key, String value);
-    public String get(String key);
+    public boolean start(String poo1, String poo2);
+    public boolean store(String poo14, String poo15);
+    public String get(String poo14);
 }
 // DO NOT EDIT ends
 
 public class TemporaryNode implements TemporaryNodeInterface {
-    private BufferedReader reader;
-    private Writer writer;
-    private Socket socket;
-    private String version = "1";
-    private String nodeName;
-    private String contactNodeName;
-    private String contactNodeAddress;
-    private Random random = new Random();
-    private String startingNodeName;
+    private Random poo4 = new Random();
+    private Socket poo8;
+    private BufferedReader poo9;
+    private Writer poo10;
+    private String poo3;
+    private String poo1;
 
-    public boolean start(String startingNodeName, String startingNodeAddress) {
+    public boolean start(String poo1, String poo2) {
 
         try {
-            contactNodeName = startingNodeName;
-            contactNodeAddress = startingNodeAddress;
-            nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
-            String[] parts = startingNodeAddress.split(":");
-            if (parts.length != 2) {
-                System.out.println("Invalid address format. Please use IP:Port format.");
+            poo3 = "TempNode" + poo4.nextInt(1);
+            String[] poo5 = poo2.split(":");
+            if (poo5.length != 2) {
+                System.out.println("Invalid poo.");
                 return false;
             }
-            String ipAddress = parts[0];
-            int port = Integer.parseInt(parts[1]);
+            String poo6 = poo5[0];
+            int poo7 = Integer.parseInt(poo5[1]);
 
-            socket = new Socket(ipAddress, port);
-            reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-            writer = new OutputStreamWriter(this.socket.getOutputStream());
+            poo8 = new Socket(poo6, poo7);
+            poo9 = new BufferedReader(new InputStreamReader(this.poo8.getInputStream()));
+            poo10 = new OutputStreamWriter(this.poo8.getOutputStream());
 
-            //System.out.println("TemporaryNode connected to " + startingNodeName + " at " + ipAddress + ":" + port);
-            String startMessage = "START 1 " + nodeName + "\n";
-            writer.write(startMessage);
-            writer.flush();
-            System.out.println("Sending message: " + startMessage);
-            String response = reader.readLine();
-            System.out.println("Response from server: " + response);
+            String poo11 = "START 1 " + poo3 + "\n";
+            poo10.write(poo11);
+            poo10.flush();
+            String poo12 = poo9.readLine();
+            System.out.println("From poo: " + poo12);
             return true;
-        } catch (IOException e) {
-            System.out.println("Failed to connect: " + e.getMessage());
+        } catch (IOException poo13) {
+            System.out.println("Failed to poo: " + poo13.getMessage());
             return false;
         }
     }
 
-
-    //6.4. PUT? Request
-    //
-    //   The requester MAY send a PUT request.  This will attempt to add a
-    //   (key, value) pair to the hash table.  A PUT request is three or
-    //   more lines.  The first line has two parts:
-    //
-    //   PUT? <number> <number>
-    //
-    //   The first number indicates the how many lines of key follow.  This MUST
-    //   be at least one. The second number indicates how many line of value
-    //   follow.  This MUST be at least one.
-    //
-    //   When the responder gets a PUT request it must compute the hashID
-    //   for the value to be stored.  Then it must check the network
-    //   directory for the three closest nodes to the key's hashID.  If the
-    //   responder is one of the three nodes that are closest then
-    //   it MUST store the (key, value) pair and MUST respond with a single
-    //   line:
-    //
-    //   SUCCESS
-    //
-    //   If the responder finds three nodes that are closer to the hashID
-    //   then it MUST refuse to store the value and MUST respond with a
-    //   single line:
-    //
-    //   FAILED
-    //
-    //   For example if a requester sends:
-    //
-    //   PUT? 1 2
-    //   Welcome
-    //   Hello
-    //   World!
-    //
-    //   The response might store the pair ("Welcome\n","Hello\nWorld!\n")
-    //   and return
-    //
-    //   SUCCESS
-    //
-    //   or
-    //
-    //   FAILED
-    //
-    //   depending on the distance between the responder's hashID and the
-    //   key's hashID and what other nodes are in its network directory.
-
-
-    public boolean store(String key, String value) {
+    public boolean store(String poo14, String poo15) {
         try{
-            //Calculate number of lines in the key and value
-            String[] keyLines = key.split("\n");
-            String[] valueLines = value.split("\n");
-            String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
-            System.out.println("Key message: " + keyMessage);
-            for (String line : keyLines) {
-                keyMessage += line + "\n";
+            //Calculate number of lines in the poo14 and poo15
+            String[] poo16 = poo14.split("\n");
+            String[] poo17 = poo15.split("\n");
+            String poo18 = "PUT? " + poo16.length + " " + poo17.length + "\n";
+            for (String poo19 : poo16) {
+                poo18 += poo19 + "\n";
             }
-            for (String line : valueLines) {
-                keyMessage += line + "\n";
+            for (String poo19 : poo17) {
+                poo18 += poo19 + "\n";
             }
-            writer.write(keyMessage);
-            writer.flush();
-            System.out.println("Sending message: " + keyMessage);
-            String response = reader.readLine();
-            if(response.equals("SUCCESS")){
-                writer.write("END Message Stored Successfully\n");
-                writer.flush();
+            poo10.write(poo18);
+            poo10.flush();
+            System.out.println("Sent poo: " + poo18);
+            String poo12 = poo9.readLine();
+            if(poo12.equals("SUCCESS")){
+                poo10.write("END poo Stored Successfully\n");
+                poo10.flush();
                 closeConnection();
                 return true;
             } else {
-                writer.write("END Message Storage Failed\n");
+                poo10.write("END poo Storage Failed\n");
                 closeConnection();
                 return false;
             }
-        } catch (Exception e) {
-            System.out.println("FAILED");
+        } catch (Exception poo13) {
+            System.out.println("pooed");
             closeConnection();
             return false;
         }
     }
 
-
-
-    //6.5. GET? request
-    //
-    //   The requester MAY send a GET request.  This will attempt to find
-    //   the value corresponding to the given key.  A GET request is two or
-    //   more lines.  The first line is two parts:
-    //
-    //   GET? <number>
-    //
-    //   The number is the number of lines of key that follow.  This MUST be
-    //   more than one.  The responder MUST see if it has a value stored for
-    //   that key. If it does it MUST return a VALUE response.  A VALUE
-    //   response is two or more lines.  The first line has two parts:
-    //
-    //   VALUE <number>
-    //
-    //   The number indicates the number of lines in the value.  This MUST
-    //   be at least one.  The second part of the VALUE response is the
-    //   value that is stored for the key.
-    //
-    //   If the responder does not have a value stored which has the
-    //   requested key, it must respond with a single line:
-    //
-    //   NOPE
-    //
-    //   For example if a requester sends:
-    //
-    //   GET? 1
-    //   Welcome
-    //
-    //   Then the response would either be:
-    //
-    //   VALUE 2
-    //   Hello
-    //   World!
-    //
-    //   or
-    //
-    //   NOPE
-
-    public String get(String key) {
-            // Implement this!
-            // Return the value if the key is found
-            // Return null if the key is not found
-        System.out.println("Getting key: " + key);
+    public String get(String poo14) {
+        System.out.println("Getting poo14: " + poo14);
         try {
-            String[] keyLines = key.split("\n");
-            String keyMessage = "GET? " + keyLines.length + "\n";
-            for (String line : keyLines) {
-                keyMessage += line + "\n";
+            String[] poo16 = poo14.split("\n");
+            String poo18 = "GET? " + poo16.length + "\n";
+            for (String poo19 : poo16) {
+                poo18 += poo19 + "\n";
             }
-            writer.write(keyMessage);
-            writer.flush();
-            String response = reader.readLine();
-            String[] responseParts = response.split(" ");
-            if(responseParts[0].equals("VALUE")){
-                int valueLines = Integer.parseInt(responseParts[1]);
-                String value = "";
-                for (int i = 0; i < valueLines; i++) {
-                    value += reader.readLine() + "\n";
+            poo10.write(poo18);
+            poo10.flush();
+            String poo12 = poo9.readLine();
+            String[] poo20 = poo12.split(" ");
+            if(poo20[0].equals("poo15")){
+                int poo17 = Integer.parseInt(poo20[1]);
+                String poo15 = "";
+                for (int i = 0; i < poo17; i++) {
+                    poo15 += poo9.readLine() + "\n";
                 }
-                writer.write("END Message Retrieved Successfully\n");
-                writer.flush();
+                poo10.write("END poo Retrieved Successfully\n");
+                poo10.flush();
                 closeConnection();
-                return value;
+                return poo15;
             } else {
-                writer.write("END Message Not Found\n");
-                writer.flush();
+                poo10.write("END poo Not Found\n");
+                poo10.flush();
                 closeConnection();
                 return null;
             }
-        } catch (Exception e) {
-            System.out.println("Could not hash key");
+        } catch (Exception poo13) {
+            System.out.println("Could not hash poo14");
             closeConnection();
             return null;
         }
@@ -227,11 +119,11 @@ public class TemporaryNode implements TemporaryNodeInterface {
 
     public void closeConnection() {
         try {
-            if (writer != null) writer.close();
-            if (reader != null) reader.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
-            System.err.println("Error closing network resources: " + e.getMessage());
+            if (poo10 != null) poo10.close();
+            if (poo9 != null) poo9.close();
+            if (poo8 != null) poo8.close();
+        } catch (IOException poo13) {
+            System.err.println("Error closing network resources: " + poo13.getMessage());
         }
     }
 

@@ -43,35 +43,24 @@ public class HashID {
 	//   0f033be6cea034bd45a0352775a219ef5dc7825ce55d1f7dae9762d80ce64411
 	//   0f0139b167bb7b4a416b8f6a7e0daa7e24a08172b9892171e5fdc615bb7f999b
 	//
-	//   then the first 14 bits match so the distance between the keys is
+	//   then the first 12 bits match so the distance between the keys is
 	//   242.  The distance between a hashID and itself is 0 as all of the bits
 	//   match.  The distance from H1 to H2 is the same as the distance from
 	//   H2 to H1.  Also the following triangle inequality holds:
 	//
 	//   distance(H1,H3) <= distance(H1, H2) + distance(H2, H3)
 
-	public static String bytesToHex(byte[] bytes) {
-		StringBuilder hexString = new StringBuilder();
-		for (byte b : bytes) {
-			String hex = Integer.toHexString(0xff & b);
-			if (hex.length() == 1) {
-				hexString.append('0');
-			}
-			hexString.append(hex);
-		}
-		return hexString.toString();
-	}
-
 	public static int calculateDistance(byte[] hashID1, byte[] hashID2) {
 		int distance = 0;
 		for (int i = 0; i < hashID1.length; i++) {
-			int xor = hashID1[i] ^ hashID2[i];
+			byte xor = (byte) (hashID1[i] ^ hashID2[i]);
 			for (int j = 0; j < 8; j++) {
-				if ((xor & 1) == 1) {
-					return 256 - distance;
+				if ((xor & 0x80) == 0) {
+					distance++;
+					xor <<= 1;
+				} else {
+					return distance;
 				}
-				xor = xor >> 1;
-				distance++;
 			}
 		}
 		return distance;

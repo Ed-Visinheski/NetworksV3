@@ -2,14 +2,15 @@
 // Coursework 2023/2024
 //
 // Submission by
-// YOUR_NAME_GOES_HERE
-// YOUR_STUDENT_ID_NUMBER_GOES_HERE
-// YOUR_EMAIL_GOES_HERE
+// Eduardo Cook Visinheski
+// 220057799
+// eduardo.cook-visinheski@city.ac.uk
 
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Random;
 
 // DO NOT EDIT starts
 interface TemporaryNodeInterface {
@@ -28,16 +29,14 @@ public class TemporaryNode implements TemporaryNodeInterface {
     private String nodeName;
     private String contactNodeName;
     private String contactNodeAddress;
+    private Random random = new Random();
 
     public boolean start(String startingNodeName, String startingNodeAddress) {
 
         try {
             this.contactNodeName = startingNodeName;
             this.contactNodeAddress = startingNodeAddress;
-            System.out.println("Please name this node:");
-            BufferedReader nameReader = new BufferedReader(new InputStreamReader(System.in));
-            this.nodeName = nameReader.readLine();
-            nameReader.close();
+            this.nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
             String[] parts = startingNodeAddress.split(":");
             if (parts.length != 2) {
                 System.out.println("Invalid address format. Please use IP:Port format.");

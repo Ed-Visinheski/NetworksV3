@@ -24,7 +24,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
     public boolean start(String poo1, String poo2) {
 
         try {
-            poo3 = "PooNode" + poo4.nextInt(10);
+            poo3 = "eduardo.cook-visinheski@city.ac.uk:" + poo4.nextInt(10);
             String[] poo5 = poo2.split(":");
             if (poo5.length != 2) {
                 System.out.println("Invalid poo.");

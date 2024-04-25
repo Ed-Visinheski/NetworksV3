@@ -30,13 +30,14 @@ public class TemporaryNode implements TemporaryNodeInterface {
     private String contactNodeName;
     private String contactNodeAddress;
     private Random random = new Random();
+    private String startingNodeName;
 
     public boolean start(String startingNodeName, String startingNodeAddress) {
 
         try {
-            this.contactNodeName = startingNodeName;
-            this.contactNodeAddress = startingNodeAddress;
-            this.nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
+            contactNodeName = startingNodeName;
+            contactNodeAddress = startingNodeAddress;
+            nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
             String[] parts = startingNodeAddress.split(":");
             if (parts.length != 2) {
                 System.out.println("Invalid address format. Please use IP:Port format.");
@@ -46,15 +47,15 @@ public class TemporaryNode implements TemporaryNodeInterface {
             int port = Integer.parseInt(parts[1]);
 
             socket = new Socket(ipAddress, port);
-            this.reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-            this.writer = new OutputStreamWriter(this.socket.getOutputStream());
+            reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+            writer = new OutputStreamWriter(this.socket.getOutputStream());
 
-            System.out.println("TemporaryNode connected to " + startingNodeName + " at " + ipAddress + ":" + port);
-            String startMessage = "START 1 " + this.nodeName + "\n";
-            this.writer.write(startMessage);
-            this.writer.flush();
+            //System.out.println("TemporaryNode connected to " + startingNodeName + " at " + ipAddress + ":" + port);
+            String startMessage = "START 1 " + nodeName + "\n";
+            writer.write(startMessage);
+            writer.flush();
             System.out.println("Sending message: " + startMessage);
-            String response = this.reader.readLine();
+            String response = reader.readLine();
             System.out.println("Response from server: " + response);
             return true;
         } catch (IOException e) {
@@ -125,16 +126,22 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 keyMessage += line + "\n";
             }
             writer.write(keyMessage);
-            System.out.println("Sending message: " + keyMessage);
             writer.flush();
+            System.out.println("Sending message: " + keyMessage);
             String response = reader.readLine();
             if(response.equals("SUCCESS")){
+                writer.write("END Message Stored Successfully\n");
+                writer.flush();
+                closeConnection();
                 return true;
             } else {
+                writer.write("END Message Storage Failed\n");
+                closeConnection();
                 return false;
             }
         } catch (Exception e) {
-                System.out.println("FAILED");
+            System.out.println("FAILED");
+            closeConnection();
             return false;
         }
     }
@@ -185,31 +192,37 @@ public class TemporaryNode implements TemporaryNodeInterface {
             // Return the value if the key is found
             // Return null if the key is not found
         System.out.println("Getting key: " + key);
-            try {
-                //Calculate number of lines in the key
-                String[] keyLines = key.split("\n");
-                String keyMessage = "GET? " + keyLines.length + "\n";
-                for (String line : keyLines) {
-                    keyMessage += line + "\n";
+        try {
+            String[] keyLines = key.split("\n");
+            String keyMessage = "GET? " + keyLines.length + "\n";
+            for (String line : keyLines) {
+                keyMessage += line + "\n";
+            }
+            writer.write(keyMessage);
+            writer.flush();
+            String response = reader.readLine();
+            String[] responseParts = response.split(" ");
+            if(responseParts[0].equals("VALUE")){
+                int valueLines = Integer.parseInt(responseParts[1]);
+                String value = "";
+                for (int i = 0; i < valueLines; i++) {
+                    value += reader.readLine() + "\n";
                 }
-                writer.write(keyMessage);
+                writer.write("END Message Retrieved Successfully\n");
                 writer.flush();
-                String response = reader.readLine();
-                String[] responseParts = response.split(" ");
-                if(responseParts[0].equals("VALUE")){
-                    int valueLines = Integer.parseInt(responseParts[1]);
-                    String value = "";
-                    for (int i = 0; i < valueLines; i++) {
-                        value += reader.readLine() + "\n";
-                    }
-                    return value;
-                } else {
-                    return null;
-                }
-            } catch (Exception e) {
-                System.out.println("Could not hash key");
+                closeConnection();
+                return value;
+            } else {
+                writer.write("END Message Not Found\n");
+                writer.flush();
+                closeConnection();
                 return null;
             }
+        } catch (Exception e) {
+            System.out.println("Could not hash key");
+            closeConnection();
+            return null;
+        }
     }
 
     public void closeConnection() {

@@ -136,6 +136,7 @@ public class FullNode implements FullNodeInterface{
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
             writer.write("START 1 " + nodeName + "\n");
             writer.flush();
+            System.out.println("Sent START message to " + startingNodeName);
             String line = reader.readLine();
             String[] parts = line.split(" ");
             if (parts.length != 3) {
@@ -146,124 +147,74 @@ public class FullNode implements FullNodeInterface{
             }
             String version = parts[1];
             System.out.println("Received START message from " + startingNodeName+ " with version " + version);
-            System.out.println("Sent START message to " + startingNodeName);
             while ((!reader.readLine().contains("END") && !socket.isClosed())) {
                 line = reader.readLine();
-                System.out.println("Received: " + line);
                 parts = line.split(" ");
-                if (parts.length < 1) {
-                    System.out.println("Invalid message.");
-                    writer.write("END Invalid message\n");
-                    writer.flush();
-                    return;
-                }
-                String command = parts[0];
+                switch (parts[0]){
+                    case"NOTIFY":{
+                        String name = parts[1];
+                        String address = parts[2];
+                        AddToNetworkMap(name, address);
+                        writer.write("NOTIFIED\n");
+                        break;
+                    }
+                    case"PUT?": {
+                        String key = parts[1];
+                        byte[] keyHashID = hashID.computeHashID(key);
+                        if (calculateStoreDistance(keyHashID)) {
+                            //Store the key and value on the current node
+                            keyValueMap.put(key, parts[2]);
+                            writer.write("PUT! " + key + " " + parts[2] + "\n");
+                            writer.flush();
+                        } else {
+                            //Find the closest nodes to the keyHashID
+                            Map<String, String> closestNodes = findClosestToKey(keyHashID);
+                            //Send the key and value to the closest node
+                            for (String node : closestNodes.keySet()) {
+                                String[] nodeParts = node.split(":");
+                                String nodeAddress = closestNodes.get(node);
+                                Socket closestNodeSocket = new Socket(nodeParts[0], Integer.parseInt(nodeParts[1]));
+                                BufferedWriter closestNodeWriter = new BufferedWriter(new OutputStreamWriter(closestNodeSocket.getOutputStream()));
+                                closestNodeWriter.write("PUT? " + key + " " + parts[2] + "\n");
+                                closestNodeWriter.flush();
+                                closestNodeSocket.close();
+                            }
+                        }
+                        break;
+                    }
 
-                //6.4. PUT? Request
-                //
-                //   The requester MAY send a PUT request.  This will attempt to add a
-                //   (key, value) pair to the hash table.  A PUT request is three or
-                //   more lines.  The first line has two parts:
-                //
-                //   PUT? <number> <number>
-                //
-                //   The first number indicates the how many lines of key follow.  This MUST
-                //   be at least one. The second number indicates how many line of value
-                //   follow.  This MUST be at least one.
-                //
-                //   When the responder gets a PUT request it must compute the hashID
-                //   for the value to be stored.  Then it must check the network
-                //   directory for the three closest nodes to the key's hashID.  If the
-                //   responder is one of the three nodes that are closest then
-                //   it MUST store the (key, value) pair and MUST respond with a single
-                //   line:
-                //
-                //   SUCCESS
-                //
-                //   If the responder finds three nodes that are closer to the hashID
-                //   then it MUST refuse to store the value and MUST respond with a
-                //   single line:
-                //
-                //   FAILED
-                //
-                //   For example if a requester sends:
-                //
-                //   PUT? 1 2
-                //   Welcome
-                //   Hello
-                //   World!
-                //
-                //   The response might store the pair ("Welcome\n","Hello\nWorld!\n")
-                //   and return
-                //
-                //   SUCCESS
-                //
-                //   or
-                //
-                //   FAILED
-                //
-                //   depending on the distance between the responder's hashID and the
-                //   key's hashID and what other nodes are in its network directory.
-                if (command.equals("PUT?")) {
-                    if(parts.length < 3) {
-                        System.out.println("Invalid PUT? message.");
-                        writer.write("END Invalid PUT? message\n");
+                    case "GET?": {
+                        String keyToGet = parts[1];
+                        if (keyValueMap.containsKey(keyToGet)) {
+                            writer.write("GET! " + keyToGet + " " + keyValueMap.get(keyToGet) + "\n");
+                            writer.flush();
+                        } else {
+                            writer.write("GET! " + keyToGet + " NOT_FOUND\n");
+                            writer.flush();
+                        }
+                        break;
+                    }
+                    case "END": {
+                        System.out.println("Received END message from " + startingNodeName);
+                        socket.close();
+                        break;
+                    }
+                    case "ECHO?":{
+                        writer.write("OHCE\n");
                         writer.flush();
-                        stop();
-                        return;
+                        break;
                     }
-                    int keyLines = Integer.parseInt(parts[1]);
-                    int valueLines = Integer.parseInt(parts[2]);
-                    String key = "";
-                    String value = "";
-                    for (int i = 0; i < keyLines; i++) {
-                        key += reader.readLine() + "\n";
+                    case "NEAREST?":{
+                        byte[] keyHashID = hashID.computeHashID(parts[1]);
+                        Map<String, String> closestNodes = findClosestToKey(keyHashID);
+                        for (String node : closestNodes.keySet()) {
+                            writer.write("NEAREST! " + node + " " + closestNodes.get(node) + "\n");
+                            writer.flush();
+                        }
+                        break;
                     }
-                    for (int i = 0; i < valueLines; i++) {
-                        value += reader.readLine() + "\n";
-                    }
-                    //Calculate key hashID
-                    byte[] keyHashID = hashID.computeHashID(key);
-                    if(calculateStoreDistance(keyHashID)){
-                        //Store the key and value
-                        keyValueMap.put(key, value);
-                        writer.write("SUCCESS\n");
-                        writer.flush();
-                        System.out.println("Sent SUCCESS message to " + startingNodeName);
-                    } else {
-                        writer.write("FAILED\n");
-                        writer.flush();
-                        System.out.println("Sent FAILED message to " + startingNodeName);
-                    }
-                } else if (command.equals("GET?")) {
-                    if (parts.length < 2) {
-                        System.out.println("Invalid GET? message.");
-                        return;
-                    }
-                    String key = parts[1];
-                    System.out.println("Received GET? message with key " + key);
-                    // String value = Get(key);
-                    // writer.write("GET! " + key + " " + value + "\n");
-                    writer.flush();
-                    System.out.println("Sent GET! message to " + startingNodeName);
-                } else if (command.equals("NOTIFY")) {
-                    if (parts.length < 3) {
-                        System.out.println("Invalid NOTIFY message.");
-                        return;
-                    }
-                    String name = parts[1];
-                    String address = parts[2];
-                    System.out.println("Received NOTIFY message with name " + name + " and address " + address);
-                    // Add to network map
-                    // AddToNetworkMap(name, address);
-                    writer.write("NOTIFY!\n");
-                    writer.flush();
-                    System.out.println("Sent NOTIFY! message to " + name);
-                } else {
-                    System.out.println("Unknown command.");
-                    return;
                 }
-        }
+            }
     } catch (IOException e) {
             System.out.println("Error handling client.");
         } catch (Exception e) {
@@ -342,7 +293,6 @@ public class FullNode implements FullNodeInterface{
             int distance = hasher.calculateDistance(hasher.computeHashID(currentNodeName), keyHashID);
             //Find the closest nodes to the keyHashID
             if(!networkMap.containsKey(distance)){
-                distance--;
                 while(!networkMap.containsKey(distance) && distance > 0){
                     distance--;
                 }

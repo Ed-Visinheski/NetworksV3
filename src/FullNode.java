@@ -24,38 +24,6 @@ interface FullNodeInterface {
 
 public class FullNode implements FullNodeInterface{
 
-    //Network Mapping
-    //
-    //   A network map is a map from the names of full nodes to their
-    //   addresses.  It is used to find the node that is storing the
-    //   relevant part of the hash table.  Full nodes MUST build and
-    //   maintain a network map.
-    //
-    //   Each node's network map MUST contain itself.  It MUST contain at
-    //   most three nodes at every distance (three nodes at distance 10,
-    //   three nodes at distance 11, etc.).  If a node finds more than
-    //   three nodes at the same distance it MUST only keep three.  It
-    //   SHOULD pick to maximise network robustness and stability.  This MAY
-    //   be picking the longest running node.  Nodes MUST remove entries
-    //   from their map if they are uncontactable or incorrectly implement
-    //   the protocol.
-    //
-    //   By limiting the number of nodes in the map the memory required is
-    //   limited and does not grow with the size of network.  By storing
-    //   nodes at all distances, the number of nodes that must be contacted
-    //   to find the nearest hashID is minimised.
-    //
-    //   The map MAY be built by passive mapping; recording the names of
-    //   nodes and addresses of full nodes that it has interacted with.
-    //   It MAY also be built by active mapping; connecting to other nodes
-    //   and querying their directories.
-    //
-    //   Full nodes MUST use the NOTIFY request to inform other full nodes
-    //   of their address.  All nodes MAY use the NOTIFY request to inform
-    //   full nodes of addresses of other full nodes.
-
-    // Network map is a map from the distance to a map from the name to the address
-    // Integer used for distance, String for the name and string for the address
     private Map<Integer, Map<String, String>> networkMap = new HashMap<>();
     // Map for the Key and the value
     private Map<String, String> keyValueMap = new HashMap<>();
@@ -80,28 +48,10 @@ public class FullNode implements FullNodeInterface{
         }
     }
 
-    //6.1 START message
-    //
-    //   Both nodes MUST send a START message at the start of the
-    //   communication.  They MUST NOT send a START message at any other
-    //   time.  A START message is a single line consisting of three parts:
-    //
-    //   START <number> <string>
-    //
-    //   The number gives the highest protocol version supported by the
-    //   sender.  The communication must use the highest protocol version
-    //   supported by both the requester and the receiver.  This document
-    //   describes protocol version 1.
-    //
-    //   The string gives the node name of the sender.
-    //
-    //   For example on connecting to the example node above the first message
-    //   received could be:
-    //
-    //   START 1 martin.brain@city.ac.uk:MyCoolImplementation,1.41,test-node-2
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
+            connectToStartingNode(startingNodeName, startingNodeAddress);
             Thread thread = new Thread(() -> {
                 while (true) {
                     try {
@@ -159,12 +109,21 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case"PUT?": {
-                        String key = parts[1];
+                        int keyLines = Integer.parseInt(parts[1]);
+                        int valueLines = Integer.parseInt(parts[2]);
+                        String key = "";
+                        String value = "";
+                        for(int i = 0; i < keyLines; i++){
+                            key += reader.readLine()+"\n";
+                        }
+                        for(int i = 0; i < valueLines; i++){
+                            value += reader.readLine()+"\n";
+                        }
                         byte[] keyHashID = hashID.computeHashID(key);
                         if (calculateStoreDistance(keyHashID)) {
                             //Store the key and value on the current node
-                            keyValueMap.put(key, parts[2]);
-                            writer.write("PUT! " + key + " " + parts[2] + "\n");
+                            keyValueMap.put(key, value);
+                            writer.write("SUCCESS\n");
                             writer.flush();
                         } else {
                             //Find the closest nodes to the keyHashID
@@ -186,11 +145,12 @@ public class FullNode implements FullNodeInterface{
                     case "GET?": {
                         String keyToGet = parts[1];
                         if (keyValueMap.containsKey(keyToGet)) {
-                            writer.write("GET! " + keyToGet + " " + keyValueMap.get(keyToGet) + "\n");
+                            String[] valueSlit = keyValueMap.get(keyToGet).split("\n");
+                            writer.write("VALUE " + valueSlit.length + "\n" + keyValueMap.get(keyToGet));
                             writer.flush();
                         } else {
-                            writer.write("GET! " + keyToGet + " NOT_FOUND\n");
-                            writer.flush();
+                            findClosestToKey(hashID.computeHashID(keyToGet));
+
                         }
                         break;
                     }
@@ -224,15 +184,6 @@ public class FullNode implements FullNodeInterface{
     }
 
     public boolean calculateStoreDistance(byte[] keyHashID) {
-        //Calculate the distance between the keyHashID and the current node
-        //Then determine if the key should be stored on this node based on its network size,
-        //Check to see if the keyHashID is closer to the current node than the other nodes in the network map
-        //send key and value to the closest node
-        //if no other closest node calculate the distance between the keyHashID and the current node
-        //Keys should be stored based on keyHashID distance <= (256 / number of nodes in network map)
-        //if the keyHashID is > (256 / number of nodes in network map) then the key should
-        // not be stored on the current node and returns false
-        //This is to ensure that the key is stored on the closest node to the keyHashID
         try {
             HashID hasher = new HashID();
             int networkSize = networkMap.size();
@@ -306,6 +257,31 @@ public class FullNode implements FullNodeInterface{
         }
         return null;
     }
+
+    public void connectToStartingNode(String startingNodeName, String startingNodeAddress) {
+        try {
+            String[] addressParts = startingNodeAddress.split(":");
+            InetAddress ipAddress = InetAddress.getByName(addressParts[0]);
+            int port = Integer.parseInt(addressParts[1]);
+
+            try (Socket socket = new Socket(ipAddress, port);
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+                writer.write("START 1 " + nodeName + "\n");
+                writer.flush();
+                System.out.println("Connected to " + startingNodeName + " at " + startingNodeAddress);
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println("Message from " + startingNodeName + ": " + line);
+                    if (line.contains("END")) break;  // Example condition to end connection
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Could not connect to " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
+        }
+    }
+
 
 
     public static void main(String[] args) {

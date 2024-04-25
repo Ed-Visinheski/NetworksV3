@@ -55,7 +55,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
             this.writer.flush();
             String response = this.reader.readLine();
             System.out.println("Response from server: " + response);
-
             return true;
         } catch (IOException e) {
             System.out.println("Failed to connect: " + e.getMessage());
@@ -117,6 +116,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String[] keyLines = key.split("\n");
             String[] valueLines = value.split("\n");
             String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
+            System.out.println("Key message: " + keyMessage);
             for (String line : keyLines) {
                 keyMessage += line + "\n";
             }
@@ -124,6 +124,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 keyMessage += line + "\n";
             }
             writer.write(keyMessage);
+            System.out.println("Sending message: " + keyMessage);
             writer.flush();
             String response = reader.readLine();
             if(response.equals("SUCCESS")){

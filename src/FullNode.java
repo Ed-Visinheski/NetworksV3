@@ -28,6 +28,7 @@ public class FullNode implements FullNodeInterface{
     // Map for the Key and the value
     private Map<String, String> keyValueMap = new HashMap<>();
     private ServerSocket serverSocket;
+    private Socket socket;
     private String nodeName;
     private String address;
     private String currentNodeName;
@@ -123,7 +124,7 @@ public class FullNode implements FullNodeInterface{
 
 //                        If the responder finds three nodes that are closer to the hashID
 //                        then it MUST refuse to store the value and MUST respond with a
-//                        single line:
+//                        single line: FAILED
                         if(calculateStoreDistance(keyHashID)){
                             keyValueMap.put(key, value);
                             writer.write("SUCCESS\n");
@@ -324,39 +325,35 @@ public class FullNode implements FullNodeInterface{
             InetAddress ipAddress = InetAddress.getByName(addressParts[0]);
             int port = Integer.parseInt(addressParts[1]);
 
-            try (Socket socket = new Socket(ipAddress, port);
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            try {
+                socket = new Socket(ipAddress, port);
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                writer.write("START 1 " + nodeName + "\n");
-                writer.flush();
-                System.out.println("Connected to " + startingNodeName + " at " + startingNodeAddress);
-                String line;
-                while ((line = reader.readLine()) != null && !socket.isClosed() && !line.contains("END")) {
-                    //write to node based on input from user
-                    Scanner scanner = new Scanner(System.in);
-                    String input = scanner.nextLine();
-                    writer.write(input + "\n");
+                    writer.write("START 1 " + nodeName + "\n");
                     writer.flush();
-                    reader.readLine();
-                }
+                    System.out.println("Connected to server: " + startingNodeName + " at " + startingNodeAddress);
+                    String line;
+                    Scanner scanner = new Scanner(System.in);
+                    line = reader.readLine();
+                    System.out.println(line);
+                    while (line != null && !socket.isClosed() && !line.contains("END")){
+                        String input = scanner.nextLine();
+                        writer.write(input + "\n");
+                        writer.flush();
+                        reader.readLine();
+                        System.out.println(reader.readLine());
+                    }
+            } catch (IOException e) {
+                System.out.println("Could not connect to server " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
             }
         } catch (IOException e) {
-            System.out.println("Could not connect to " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
+            System.out.println("Could not connect to server " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
         }
     }
 
     //Will handle communications between this node and the starting node
-    public void HandleServer(){
-        try {
-            while (true) {
-                Socket socket = serverSocket.accept();
-                HandleClient(socket, currentNodeName, currentNodeAddress);
-            }
-        } catch (IOException e) {
-            System.out.println("Error accepting connections.");
-        }
-    }
+
 
 
 

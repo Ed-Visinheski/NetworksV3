@@ -10,6 +10,8 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 // DO NOT EDIT starts
@@ -37,7 +39,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             contactNodeName = startingNodeName;
             contactNodeAddress = startingNodeAddress;
-            nodeName = "eduardo.cook-visinheski@city.ac.uk:TemporaryNode," + random.nextInt(10000);
+            nodeName = "YOUR-EMAIL" + random.nextInt(99);
             String[] parts = startingNodeAddress.split(":");
             if (parts.length != 2) {
                 System.out.println("Invalid address format. Please use IP:Port format.");
@@ -192,6 +194,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             // Return the value if the key is found
             // Return null if the key is not found
         System.out.println("Getting key: " + key);
+        HashID hasher = new HashID();
         try {
             String[] keyLines = key.split("\n");
             String keyMessage = "GET? " + keyLines.length + "\n";
@@ -213,10 +216,66 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 closeConnection();
                 return value;
             } else {
-                writer.write("END Message Not Found\n");
+                writer.write("NEAREST? " + hasher.computeHashID(key) + "\n");
                 writer.flush();
-                closeConnection();
-                return null;
+                String nearestResponse = reader.readLine();
+                String[] nearestParts = nearestResponse.split(" ");
+                if(nearestParts[0].equals("NODES")){
+                    Map<String, String> nearestNodesMap = new HashMap<>();
+                    int nearestLines = Integer.parseInt(nearestParts[1]);
+                    for (int i = 0; i < nearestLines; i++) {
+                        String nodeName = reader.readLine();
+                        String nodeAddress = reader.readLine();
+                        nearestNodesMap.put(nodeName, nodeAddress);
+                    }
+                    while(nearestNodesMap.size() > 0){
+                        String nearestNodeName = nearestNodesMap.keySet().iterator().next();
+                        String nearestNodeAddress = nearestNodesMap.get(nearestNodeName);
+                        nearestNodesMap.remove(nearestNodeName);
+                        String[] parts = nearestNodeAddress.split(":");
+                        if (parts.length != 2) {
+                            System.out.println("Invalid address format. Please use IP:Port format.");
+                            return null;
+                        }else {
+                            String ipAddress = parts[0];
+                            int port = Integer.parseInt(parts[1]);
+                            socket = new Socket(ipAddress, port);
+                            reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+                            writer = new OutputStreamWriter(this.socket.getOutputStream());
+                            writer.write("GET? " + keyLines.length + "\n");
+                            for (String line : keyLines) {
+                                writer.write(line + "\n");
+                            }
+                            writer.flush();
+                            String nearestResponse2 = reader.readLine();
+                            String[] nearestParts2 = nearestResponse2.split(" ");
+                            if (nearestParts2[0].equals("VALUE")) {
+                                int valueLines = Integer.parseInt(nearestParts2[1]);
+                                String value = "";
+                                for (int i = 0; i < valueLines; i++) {
+                                    value += reader.readLine() + "\n";
+                                }
+                                writer.write("END Message Retrieved Successfully\n");
+                                writer.flush();
+                                closeConnection();
+                                return value;
+                            }
+                        }
+                    }
+                    writer.write("END Message Not Found\n");
+                    writer.flush();
+                    closeConnection();
+                    return null;
+                } else {
+                    writer.write("END Message Not Found\n");
+                    writer.flush();
+                    closeConnection();
+                    return null;
+                }
+//                writer.write("END Message Not Found\n");
+//                writer.flush();
+//                closeConnection();
+//                return null;
             }
         } catch (Exception e) {
             System.out.println("Could not hash key");

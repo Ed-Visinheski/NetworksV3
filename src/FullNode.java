@@ -126,13 +126,20 @@ public class FullNode implements FullNodeInterface{
                         }
                         System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
-                        if(calculateStoreDistance(keyHashID)){
+                        if(!networkMap.isEmpty()) {
+                            if (calculateStoreDistance(keyHashID)) {
+                                keyValueMap.put(key, value);
+                                writer.write("SUCCESS\n");
+                            } else {
+                                writer.write("FAILED\n");
+                            }
+                            break;
+                        }
+                        else{
                             keyValueMap.put(key, value);
                             writer.write("SUCCESS\n");
-                        } else {
-                            writer.write("FAILED\n");
+                            break;
                         }
-                        break;
                     }
                     case "GET?": {
                         int keyLines = Integer.parseInt(parts[1]);

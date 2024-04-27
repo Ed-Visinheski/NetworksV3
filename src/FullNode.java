@@ -110,6 +110,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case"PUT?": {
+                        System.out.println("Received PUT? message from Client in format:\n" + line);
                         int keyLines = Integer.parseInt(parts[1]);
                         int valueLines = Integer.parseInt(parts[2]);
                         String key = "";
@@ -117,14 +118,12 @@ public class FullNode implements FullNodeInterface{
                         for(int i = 0; i < keyLines; i++){
                             key += reader.readLine()+"\n";
                         }
+                        System.out.println("Key:\n" + key);
                         for(int i = 0; i < valueLines; i++){
                             value += reader.readLine()+"\n";
                         }
+                        System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
-
-//                        If the responder finds three nodes that are closer to the hashID
-//                        then it MUST refuse to store the value and MUST respond with a
-//                        single line: FAILED
                         if(calculateStoreDistance(keyHashID)){
                             keyValueMap.put(key, value);
                             writer.write("SUCCESS\n");
@@ -150,7 +149,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case "END": {
-                        System.out.println("Received END message from " + startingNodeName);
+                        System.out.println("Received END message from Client");
                         socket.close();
                         break;
                     }

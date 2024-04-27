@@ -257,7 +257,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
                                 }
                                 getWriter.write("END Message Retrieved Successfully\n");
                                 getWriter.flush();
-                                closeConnection();
+                                getReader.close();
+                                getWriter.close();
+                                getSocket.close();
                                 return value;
                             }
                         }

@@ -242,24 +242,21 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         }else {
                             String ipAddress = parts[0];
                             int port = Integer.parseInt(parts[1]);
-                            socket = new Socket(ipAddress, port);
-                            reader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
-                            writer = new OutputStreamWriter(this.socket.getOutputStream());
-                            writer.write("GET? " + keyLines.length + "\n");
-                            for (String line : keyLines) {
-                                writer.write(line + "\n");
-                            }
-                            writer.flush();
-                            String nearestResponse2 = reader.readLine();
+                            Socket getSocket = new Socket(ipAddress, port);
+                            BufferedReader getReader = new BufferedReader(new InputStreamReader(getSocket.getInputStream()));
+                            Writer getWriter = new OutputStreamWriter(getSocket.getOutputStream());
+                            getWriter.write(keyMessage);
+                            getWriter.flush();
+                            String nearestResponse2 = getReader.readLine();
                             String[] nearestParts2 = nearestResponse2.split(" ");
                             if (nearestParts2[0].equals("VALUE")) {
                                 int valueLines = Integer.parseInt(nearestParts2[1]);
                                 String value = "";
                                 for (int i = 0; i < valueLines; i++) {
-                                    value += reader.readLine() + "\n";
+                                    value += getReader.readLine() + "\n";
                                 }
-                                writer.write("END Message Retrieved Successfully\n");
-                                writer.flush();
+                                getWriter.write("END Message Retrieved Successfully\n");
+                                getWriter.flush();
                                 closeConnection();
                                 return value;
                             }

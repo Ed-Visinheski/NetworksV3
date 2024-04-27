@@ -98,9 +98,9 @@ public class FullNode implements FullNodeInterface{
             }
             String version = parts[1];
             System.out.println("Received START message from Client");
-            while ((!reader.readLine().contains("END") && !socket.isClosed())) {
-                line = reader.readLine();
-                parts = line.split(" ");
+            while ((!socket.isClosed())) {
+                String command = reader.readLine();
+                parts = command.split(" ");
                 System.out.println("Received message from Client in format:\n" + line);
                 System.out.println("Message parts 0 : " + parts[0]);
                 switch (parts[0]){

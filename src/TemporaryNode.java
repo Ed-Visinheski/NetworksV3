@@ -9,6 +9,7 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -189,13 +190,15 @@ public class TemporaryNode implements TemporaryNodeInterface {
     //
     //   NOPE
 
-    public String get(String key) {
+    public String get(String key){
             // Implement this!
             // Return the value if the key is found
             // Return null if the key is not found
-        System.out.println("Getting key: " + key);
-        HashID hasher = new HashID();
         try {
+            System.out.println("Getting key: " + key);
+            HashID hasher = new HashID();
+            byte[] hashedKey = hasher.computeHashID(key);
+            String hashedKeyString = new String(hashedKey, StandardCharsets.UTF_8);
             String[] keyLines = key.split("\n");
             String keyMessage = "GET? " + keyLines.length + "\n";
             for (String line : keyLines) {
@@ -216,7 +219,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 closeConnection();
                 return value;
             } else {
-                writer.write("NEAREST? " + hasher.computeHashID(key) + "\n");
+                writer.write("NEAREST? " + hashedKeyString + "\n");
                 writer.flush();
                 String nearestResponse = reader.readLine();
                 String[] nearestParts = nearestResponse.split(" ");
@@ -272,15 +275,13 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     closeConnection();
                     return null;
                 }
-//                writer.write("END Message Not Found\n");
-//                writer.flush();
-//                closeConnection();
-//                return null;
             }
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         } catch (Exception e) {
-            System.out.println("Could not hash key");
-            closeConnection();
-            return null;
+            throw new RuntimeException(e);
         }
     }
 

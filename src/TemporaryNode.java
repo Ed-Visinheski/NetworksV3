@@ -223,7 +223,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             if (responseParts[0].equals("VALUE")) {
                 return handleValueResponse(reader, Integer.parseInt(responseParts[1]));
             } else {
-                return handleNearestNodes(hashedKeyString);
+                return handleNearestNodes(hashedKeyString, keyMessage);
             }
         } catch (UnknownHostException e) {
             System.err.println("Unknown host: " + e.getMessage());
@@ -239,7 +239,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
     }
 
-    private String handleNearestNodes(String hashedKeyString) throws IOException {
+    private String handleNearestNodes(String hashedKeyString, String keyMessage) throws IOException {
         writer.write("NEAREST? " + hashedKeyString + "\n");
         writer.flush();
 
@@ -279,9 +279,11 @@ public class TemporaryNode implements TemporaryNodeInterface {
                  Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
                 nodeWriter.write("START 1 " + nodeName + "\n");
                 nodeWriter.flush();
+                System.out.println("Sending START message to nearest node: " + entry.getKey() + ":" + entry.getValue());
                 String nodeResponse = nodeReader.readLine();
+                System.out.println("Response from nearest node: " + nodeResponse);
                 if(nodeResponse.contains("START")) {
-                    nodeWriter.write("GET? " + hashedKeyString + "\n");  // Adjusted to use hashed key
+                    nodeWriter.write(keyMessage);  // Adjusted to use hashed key
                     nodeWriter.flush();
                     System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
 

@@ -52,7 +52,7 @@ public class FullNode implements FullNodeInterface{
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
-            connectToStartingNode(startingNodeName, startingNodeAddress);
+            //connectToStartingNode(startingNodeName, startingNodeAddress);
             Thread thread = new Thread(() -> {
                 while (true) {
                     try {
@@ -97,7 +97,7 @@ public class FullNode implements FullNodeInterface{
                 return;
             }
             String version = parts[1];
-            System.out.println("Received START message from " + startingNodeName+ " with version " + version);
+            System.out.println("Received START message from Client");
             while ((!reader.readLine().contains("END") && !socket.isClosed())) {
                 line = reader.readLine();
                 parts = line.split(" ");
@@ -329,10 +329,11 @@ public class FullNode implements FullNodeInterface{
                 socket = new Socket(ipAddress, port);
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                System.out.println("Connected to server: " + startingNodeName + " at " + startingNodeAddress);
 
                     writer.write("START 1 " + nodeName + "\n");
                     writer.flush();
-                    System.out.println("Connected to server: " + startingNodeName + " at " + startingNodeAddress);
+                    System.out.println("Sent START message to server" + startingNodeName);
                     String line;
                     Scanner scanner = new Scanner(System.in);
                     line = reader.readLine();

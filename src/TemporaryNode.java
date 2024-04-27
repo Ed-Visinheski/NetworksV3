@@ -269,8 +269,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
         int nearestLines = Integer.parseInt(nearestParts[1]);
         for (int i = 0; i < nearestLines; i++) {
             String nodeDetails = reader.readLine();
+            String nodeAddressPort = reader.readLine();
             if (nodeDetails == null) break; // Handle premature end of data
-            String[] nodeData = nodeDetails.split(":");
+            String[] nodeData = nodeAddressPort.split(":");
             if (nodeData.length != 2) {
                 System.err.println("Invalid node address format.");
                 continue;

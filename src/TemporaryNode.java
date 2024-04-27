@@ -195,7 +195,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.out.println("Getting key: " + key);
             HashID hasher = new HashID();
             byte[] hashedKey = hasher.computeHashID(key);
-            String hashedKeyString = hashedKey.toString();
+            String hashedKeyString = hasher.bytesToHex(hashedKey);
             System.out.println("Hashed key: " + hashedKeyString);
             String[] keyLines = key.split("\n");
             String keyMessage = "GET? " + keyLines.length + "\n";

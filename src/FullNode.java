@@ -101,6 +101,8 @@ public class FullNode implements FullNodeInterface{
             while ((!reader.readLine().contains("END") && !socket.isClosed())) {
                 line = reader.readLine();
                 parts = line.split(" ");
+                System.out.println("Received message from Client in format:\n" + line);
+                System.out.println("Message parts 0 : " + parts[0]);
                 switch (parts[0]){
                     case"NOTIFY":{
                         String name = parts[1];

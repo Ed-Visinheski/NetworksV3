@@ -133,13 +133,13 @@ public class FullNode implements FullNodeInterface{
                             } else {
                                 writer.write("FAILED\n");
                             }
-                            break;
                         }
                         else{
                             keyValueMap.put(key, value);
                             writer.write("SUCCESS\n");
-                            break;
                         }
+                        writer.flush();
+                        break;
                     }
                     case "GET?": {
                         int keyLines = Integer.parseInt(parts[1]);

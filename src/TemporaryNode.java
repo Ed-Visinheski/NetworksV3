@@ -239,15 +239,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
     }
 
-    private String handleValueResponse(BufferedReader reader, int valueLines) throws IOException {
-        StringBuilder value = new StringBuilder();
-        for (int i = 0; i < valueLines; i++) {
-            value.append(reader.readLine());
-            if (i < valueLines - 1) value.append("\n");
-        }
-        return value.toString();
-    }
-
     private String handleNearestNodes(String hashedKeyString) throws IOException {
         writer.write("NEAREST? " + hashedKeyString + "\n");
         writer.flush();
@@ -270,6 +261,8 @@ public class TemporaryNode implements TemporaryNodeInterface {
         for (int i = 0; i < nearestLines; i++) {
             String nodeDetails = reader.readLine();
             String nodeAddressPort = reader.readLine();
+            System.out.println("Node details: " + nodeDetails);
+            System.out.println("Node address: " + nodeAddressPort);
             if (nodeDetails == null) break; // Handle premature end of data
             String[] nodeData = nodeAddressPort.split(":");
             if (nodeData.length != 2) {
@@ -286,18 +279,28 @@ public class TemporaryNode implements TemporaryNodeInterface {
                  Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
                 nodeWriter.write("GET? " + hashedKeyString + "\n");  // Adjusted to use hashed key
                 nodeWriter.flush();
+                System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
 
                 String nodeResponse = nodeReader.readLine();
-                if (nodeResponse != null && nodeResponse.startsWith("VALUE")) {
+                System.out.println("Response from nearest node: " + nodeResponse);
+                if (nodeResponse.contains("VALUE")) {
                     return handleValueResponse(nodeReader, Integer.parseInt(nodeResponse.split(" ")[1]));
                 }
             } catch (IOException e) {
                 System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());
             }
         }
-
         System.out.println("Value not found in any nearest nodes.");
         return null;
+    }
+
+    private String handleValueResponse(BufferedReader reader, int valueLines) throws IOException {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i < valueLines; i++) {
+            value.append(reader.readLine());
+            if (i < valueLines - 1) value.append("\n");
+        }
+        return value.toString();
     }
 
 

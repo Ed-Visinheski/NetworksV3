@@ -277,14 +277,19 @@ public class TemporaryNode implements TemporaryNodeInterface {
             try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
                  Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
-                nodeWriter.write("GET? " + hashedKeyString + "\n");  // Adjusted to use hashed key
+                nodeWriter.write("START 1 " + nodeName + "\n");
                 nodeWriter.flush();
-                System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
-
                 String nodeResponse = nodeReader.readLine();
-                System.out.println("Response from nearest node: " + nodeResponse);
-                if (nodeResponse.contains("VALUE")) {
-                    return handleValueResponse(nodeReader, Integer.parseInt(nodeResponse.split(" ")[1]));
+                if(nodeResponse.contains("START")) {
+                    nodeWriter.write("GET? " + hashedKeyString + "\n");  // Adjusted to use hashed key
+                    nodeWriter.flush();
+                    System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
+
+                    nodeResponse = nodeReader.readLine();
+                    System.out.println("Response from nearest node: " + nodeResponse);
+                    if (nodeResponse.contains("VALUE")) {
+                        return handleValueResponse(nodeReader, Integer.parseInt(nodeResponse.split(" ")[1]));
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());

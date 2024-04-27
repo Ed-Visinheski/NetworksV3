@@ -191,14 +191,12 @@ public class TemporaryNode implements TemporaryNodeInterface {
     //   NOPE
 
     public String get(String key){
-            // Implement this!
-            // Return the value if the key is found
-            // Return null if the key is not found
         try {
             System.out.println("Getting key: " + key);
             HashID hasher = new HashID();
             byte[] hashedKey = hasher.computeHashID(key);
             String hashedKeyString = new String(hashedKey, StandardCharsets.UTF_8);
+            System.out.println("Hashed key: " + hashedKeyString);
             String[] keyLines = key.split("\n");
             String keyMessage = "GET? " + keyLines.length + "\n";
             for (String line : keyLines) {
@@ -208,6 +206,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             writer.flush();
             String response = reader.readLine();
             String[] responseParts = response.split(" ");
+            System.out.println("Response: " + response);
             if(responseParts[0].equals("VALUE")){
                 int valueLines = Integer.parseInt(responseParts[1]);
                 String value = "";
@@ -219,10 +218,12 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 closeConnection();
                 return value;
             } else {
+                System.out.println("Key not found. Looking for nearest nodes.");
                 writer.write("NEAREST? " + hashedKeyString + "\n");
                 writer.flush();
                 String nearestResponse = reader.readLine();
                 String[] nearestParts = nearestResponse.split(" ");
+                System.out.println("Nearest response: " + nearestResponse);
                 if(nearestParts[0].equals("NODES")){
                     Map<String, String> nearestNodesMap = new HashMap<>();
                     int nearestLines = Integer.parseInt(nearestParts[1]);
@@ -230,6 +231,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                         String nodeName = reader.readLine();
                         String nodeAddress = reader.readLine();
                         nearestNodesMap.put(nodeName, nodeAddress);
+                        System.out.println("Node: " + nodeName + " Address: " + nodeAddress);
                     }
                     while(nearestNodesMap.size() > 0){
                         String nearestNodeName = nearestNodesMap.keySet().iterator().next();
@@ -268,7 +270,8 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     writer.flush();
                     closeConnection();
                     return null;
-                } else {
+                }
+                else {
                     writer.write("END Message Not Found\n");
                     writer.flush();
                     closeConnection();

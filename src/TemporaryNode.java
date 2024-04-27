@@ -192,100 +192,113 @@ public class TemporaryNode implements TemporaryNodeInterface {
 
     public String get(String key){
         try {
+            if (socket == null || socket.isClosed() || !socket.isConnected()) {
+                System.err.println("Socket is closed or not connected.");
+                return null;  // Consider reconnecting here
+            }
+
             System.out.println("Getting key: " + key);
             HashID hasher = new HashID();
             byte[] hashedKey = hasher.computeHashID(key);
             String hashedKeyString = hasher.bytesToHex(hashedKey);
             System.out.println("Hashed key: " + hashedKeyString);
+
             String[] keyLines = key.split("\n");
             String keyMessage = "GET? " + keyLines.length + "\n";
             for (String line : keyLines) {
                 keyMessage += line + "\n";
             }
+
             writer.write(keyMessage);
             writer.flush();
+
             String response = reader.readLine();
-            String[] responseParts = response.split(" ");
+            if (response == null) {
+                System.out.println("Response from server is null, possibly connection was closed.");
+                return null;
+            }
+
             System.out.println("Response: " + response);
-            if(responseParts[0].equals("VALUE")){
-                int valueLines = Integer.parseInt(responseParts[1]);
-                String value = "";
-                for (int i = 0; i < valueLines; i++) {
-                    value += reader.readLine() + "\n";
-                }
-                writer.write("END Message Retrieved Successfully\n");
-                writer.flush();
-                closeConnection();
-                return value;
+            String[] responseParts = response.split(" ");
+            if (responseParts[0].equals("VALUE")) {
+                return handleValueResponse(reader, Integer.parseInt(responseParts[1]));
             } else {
-                System.out.println("Key not found. Looking for nearest nodes.");
-                writer.write("NEAREST? " + hashedKeyString + "\n");
-                writer.flush();
-                String nearestResponse = reader.readLine();
-                String[] nearestParts = nearestResponse.split(" ");
-                System.out.println("Nearest response: " + nearestResponse);
-                if(nearestParts[0].equals("NODES")){
-                    Map<String, String> nearestNodesMap = new HashMap<>();
-                    int nearestLines = Integer.parseInt(nearestParts[1]);
-                    for (int i = 0; i < nearestLines; i++) {
-                        String nodeName = reader.readLine();
-                        String nodeAddress = reader.readLine();
-                        nearestNodesMap.put(nodeName, nodeAddress);
-                        System.out.println("Node: " + nodeName + " Address: " + nodeAddress);
-                    }
-                    while(nearestNodesMap.size() > 0){
-                        String nearestNodeName = nearestNodesMap.keySet().iterator().next();
-                        String nearestNodeAddress = nearestNodesMap.get(nearestNodeName);
-                        nearestNodesMap.remove(nearestNodeName);
-                        String[] parts = nearestNodeAddress.split(":");
-                        if (parts.length != 2) {
-                            System.out.println("Invalid address format. Please use IP:Port format.");
-                            return null;
-                        }else {
-                            String ipAddress = parts[0];
-                            int port = Integer.parseInt(parts[1]);
-                            Socket getSocket = new Socket(ipAddress, port);
-                            BufferedReader getReader = new BufferedReader(new InputStreamReader(getSocket.getInputStream()));
-                            Writer getWriter = new OutputStreamWriter(getSocket.getOutputStream());
-                            getWriter.write(keyMessage);
-                            getWriter.flush();
-                            String nearestResponse2 = getReader.readLine();
-                            String[] nearestParts2 = nearestResponse2.split(" ");
-                            if (nearestParts2[0].equals("VALUE")) {
-                                int valueLines = Integer.parseInt(nearestParts2[1]);
-                                String value = "";
-                                for (int i = 0; i < valueLines; i++) {
-                                    value += getReader.readLine() + "\n";
-                                }
-                                getWriter.write("END Message Retrieved Successfully\n");
-                                getWriter.flush();
-                                getReader.close();
-                                getWriter.close();
-                                getSocket.close();
-                                return value;
-                            }
-                        }
-                    }
-                    writer.write("END Message Not Found\n");
-                    writer.flush();
-                    closeConnection();
-                    return null;
-                }
-                else {
-                    writer.write("END Message Not Found\n");
-                    writer.flush();
-                    closeConnection();
-                    return null;
-                }
+                return handleNearestNodes(hashedKeyString);
             }
         } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
+            System.err.println("Unknown host: " + e.getMessage());
+            return null;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("IO error: " + e.getMessage());
+            return null;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.err.println("Unexpected error: " + e.getMessage());
+            return null;
+        } finally {
+            closeConnection();
         }
     }
+
+    private String handleValueResponse(BufferedReader reader, int valueLines) throws IOException {
+        StringBuilder value = new StringBuilder();
+        for (int i = 0; i < valueLines; i++) {
+            value.append(reader.readLine());
+            if (i < valueLines - 1) value.append("\n");
+        }
+        return value.toString();
+    }
+
+    private String handleNearestNodes(String hashedKeyString) throws IOException {
+        writer.write("NEAREST? " + hashedKeyString + "\n");
+        writer.flush();
+
+        String nearestResponse = reader.readLine();
+        if (nearestResponse == null) {
+            System.out.println("Nearest node response is null, connection may have been closed.");
+            return null;
+        }
+
+        System.out.println("Nearest response: " + nearestResponse);
+        String[] nearestParts = nearestResponse.split(" ");
+        if (!nearestParts[0].equals("NODES")) {
+            System.out.println("Unexpected response type for NEAREST request.");
+            return null;
+        }
+
+        Map<String, String> nearestNodesMap = new HashMap<>();
+        int nearestLines = Integer.parseInt(nearestParts[1]);
+        for (int i = 0; i < nearestLines; i++) {
+            String nodeDetails = reader.readLine();
+            if (nodeDetails == null) break; // Handle premature end of data
+            String[] nodeData = nodeDetails.split(":");
+            if (nodeData.length != 2) {
+                System.err.println("Invalid node address format.");
+                continue;
+            }
+            nearestNodesMap.put(nodeData[0], nodeData[1]);
+        }
+
+        // Attempt to retrieve the value from nearest nodes
+        for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
+            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
+                 BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
+                 Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
+                nodeWriter.write("GET? " + hashedKeyString + "\n");  // Adjusted to use hashed key
+                nodeWriter.flush();
+
+                String nodeResponse = nodeReader.readLine();
+                if (nodeResponse != null && nodeResponse.startsWith("VALUE")) {
+                    return handleValueResponse(nodeReader, Integer.parseInt(nodeResponse.split(" ")[1]));
+                }
+            } catch (IOException e) {
+                System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());
+            }
+        }
+
+        System.out.println("Value not found in any nearest nodes.");
+        return null;
+    }
+
 
     public void closeConnection() {
         try {

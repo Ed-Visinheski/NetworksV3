@@ -427,6 +427,7 @@ public class FullNode implements FullNodeInterface{
             String response;
             System.out.println("Notifying " + nodeAddress);
             while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed()) {
+                System.out.println("Received message from " + nodeAddress + ": " + response);
                 String[] parts = response.split(" ");
                 switch (parts[0]) {
                     case "NOTIFIED": {

@@ -108,7 +108,7 @@ public class FullNode implements FullNodeInterface{
                     }
                 });
             });
-        }, 5, 60, TimeUnit.SECONDS);
+        }, 50, 60, TimeUnit.SECONDS);
     }
 
 

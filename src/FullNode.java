@@ -39,7 +39,6 @@ public class FullNode implements FullNodeInterface{
 
     public boolean listen(String ipAddress, int portNumber) {
         try{
-            //Add Threads to handle multiple connections
             address = ipAddress + ":" + portNumber;
             this.nodeName = "eduardo.cook-visinheski@city.ac.uk:FullNode," + random.nextInt(10000);
             serverSocket = new ServerSocket();
@@ -117,7 +116,7 @@ public class FullNode implements FullNodeInterface{
 
     private boolean SendEchoRequest(String nodeName, String nodeAddress) {
         try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1])), 10000); // Timeout after 10 seconds
+            socket.connect(new InetSocketAddress(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1])), 10000);
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
                 writer.write("START 1 " + this.nodeName + "\n");
@@ -223,7 +222,7 @@ public class FullNode implements FullNodeInterface{
                         for (int i = 0; i < keyLines; i++) {
                             keyToGetBuilder.append(reader.readLine()).append("\n");
                         }
-                        String keyToGet = keyToGetBuilder.toString().trim() + "\n"; // Ensuring newline is there
+                        String keyToGet = keyToGetBuilder.toString().trim() + "\n";
                         byte[] keyHash = hashID.computeHashID(keyToGet);
                         int distance = hashID.calculateDistance(keyHash, hashID.computeHashID(nodeName + "\n"));
                         Map<String, String> distanceMap = keyValueMap.get(distance);
@@ -362,7 +361,7 @@ public class FullNode implements FullNodeInterface{
             }
 
             for (Map.Entry<Integer, Map<String, String>> entry : sortedMap.entrySet()) {
-                if (closestNodes.size() >= 3) break; // Stop if we already have 3 closest nodes
+                if (closestNodes.size() >= 3) break;
                 for (Map.Entry<String, String> nodeEntry : entry.getValue().entrySet()) {
                     closestNodes.put(nodeEntry.getKey(), nodeEntry.getValue());
                     if (closestNodes.size() >= 3) break;
@@ -387,11 +386,9 @@ public class FullNode implements FullNodeInterface{
             try (Socket socket = new Socket(address, port);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
-                // Send initial START message
                 writer.write("START 1 " + this.nodeName + "\n");
                 writer.flush();
 
-                // Await response and process further messages
                 String response;
                 while ((response = reader.readLine()) != null) {
                     System.out.println("Received: " + response);
@@ -401,7 +398,6 @@ public class FullNode implements FullNodeInterface{
                         break;
                     } else if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
-                        // Here you can start handling other command types
                         writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
                         writer.flush();
                         String nearestResponse = reader.readLine();
@@ -419,7 +415,7 @@ public class FullNode implements FullNodeInterface{
                         System.out.println("Received invalid message: " + response);
                         writer.write("END Invalid message\n");
                         writer.flush();
-                        break; // Close connection on protocol error
+                        break;
                     }
                 }
             } catch (IOException e) {
@@ -434,14 +430,12 @@ public class FullNode implements FullNodeInterface{
     private void discoverNetwork(Map<String, String> visitedNodes) throws Exception {
         new Thread(() ->{
             try {
-                //Use Add to network map to add the current node to the network map
                 for(String node : visitedNodes.keySet()){
                     String address = visitedNodes.get(node);
                     String[] addressParts = address.split(":");
                     try{Socket newSocket = new Socket(addressParts[0], Integer.parseInt(addressParts[1]));
                         BufferedReader newReader = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
                         BufferedWriter newWriter = new BufferedWriter(new OutputStreamWriter(newSocket.getOutputStream()));
-                        //Send a notify message to the current node
                         System.out.println("Start message to " + node);
                         newWriter.write("START 1 " + nodeName + "\n");
                         newWriter.flush();
@@ -564,12 +558,12 @@ public class FullNode implements FullNodeInterface{
                         for(int i = 0; i < keyLines; i++){
                             key += reader.readLine() + "\n";
                         }
-                        key = key.endsWith("\n") ? key : key + "\n";  // Ensure ends with newline
+                        key = key.endsWith("\n") ? key : key + "\n";
                         System.out.println("Key:\n" + key);
                         for(int i = 0; i < valueLines; i++){
                             value += reader.readLine() + "\n";
                         }
-                        value = value.endsWith("\n") ? value : value + "\n";  // Ensure ends with newline
+                        value = value.endsWith("\n") ? value : value + "\n";
                         System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
                         System.out.println("Key HashID: " + hashID.bytesToHex(keyHashID));
@@ -591,7 +585,7 @@ public class FullNode implements FullNodeInterface{
                         for (int i = 0; i < keyLines; i++) {
                             keyToGetBuilder.append(reader.readLine()).append("\n");
                         }
-                        String keyToGet = keyToGetBuilder.toString().trim() + "\n"; // Ensuring newline is there
+                        String keyToGet = keyToGetBuilder.toString().trim() + "\n";
                         byte[] keyHash = hashID.computeHashID(keyToGet);
                         int distance = hashID.calculateDistance(keyHash, hashID.computeHashID(nodeName + "\n"));
                         Map<String, String> distanceMap = keyValueMap.get(distance);

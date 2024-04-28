@@ -62,7 +62,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try{
             if (socket == null || socket.isClosed() || !socket.isConnected()) {
                 System.err.println("Socket is closed or not connected.");
-                return false;  // Consider reconnecting here
+                return false;
             }
 
             System.out.println("Storing key: " + key + " with value: " + value + " in node: " + nodeName);
@@ -240,7 +240,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 String nodeResponse = nodeReader.readLine();
                 System.out.println("Response from node " + entry.getKey() + ": \n"+ nodeResponse);
                 if(nodeResponse.contains("START")) {
-                    nodeWriter.write(keyMessage);  // Adjusted to use hashed key
+                    nodeWriter.write(keyMessage);
                     nodeWriter.flush();
                     System.out.println("Sending PUT request to nearest node: " + entry.getKey() + ":" + entry.getValue());
 
@@ -283,7 +283,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 String nodeResponse = nodeReader.readLine();
                 System.out.println("Response from nearest node: " + nodeResponse);
                 if(nodeResponse.contains("START")) {
-                    nodeWriter.write(keyMessage);  // Adjusted to use hashed key
+                    nodeWriter.write(keyMessage);
                     nodeWriter.flush();
                     System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
                     nodeResponse = nodeReader.readLine();

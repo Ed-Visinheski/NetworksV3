@@ -459,11 +459,11 @@ public class FullNode implements FullNodeInterface{
             String response;
             System.out.println("Notifying " + nodeAddress);
             while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed()) {
-                System.out.println("Received message from " + nodeAddress + ": " + response);
+                System.out.println("Received message from " + startingNodeName + ": " + response);
                 String[] parts = response.split(" ");
                 switch (parts[0]) {
                     case "NOTIFIED": {
-                        System.out.println("Notified " + nodeAddress);
+                        System.out.println("Notified " + startingNodeName);
                         break;
                     }
                     case "END": {
@@ -477,26 +477,25 @@ public class FullNode implements FullNodeInterface{
                         return;
                     }
                     case "NOPE": {
-                        System.out.println("Failed to notify " + nodeAddress);
+                        System.out.println("Failed to notify " + startingNodeName);
                         break;
                     }
                     case "VALUE": {
-                        System.out.println("Received VALUE message from " + nodeAddress + "\n" + response);
+                        System.out.println("Received VALUE message from " + startingNodeName + "\n" + response);
                         break;
                     }
 
                     case "NODES": {
-                        System.out.println("Received NODES message from " + nodeAddress + "\n" + response);
+                        System.out.println("Received NODES message from " + startingNodeName + "\n" + response);
                         break;
                     }
 
                     case "SUCCESS": {
-                        System.out.println("Successfully notified " + nodeAddress);
+                        System.out.println("Successfully notified " + startingNodeName);
                         break;
                     }
                     case "OHCE": {
-                        writer.write("Received ECHO\n");
-                        writer.flush();
+                        System.out.println("Received OHCE message from " + startingNodeName);
                         break;
                     }
 
@@ -509,7 +508,7 @@ public class FullNode implements FullNodeInterface{
                     case "NOFITY?": {
                         String name = reader.readLine();
                         String address = reader.readLine();
-                        System.out.println("Received NOTIFY? message from " + nodeAddress + "\n" + response);
+                        System.out.println("Received NOTIFY? message from " + startingNodeName + "\n" + response);
                         if (AddToNetworkMap(name, address)) {
                             writer.write("NOTIFIED\n");
                             writer.flush();

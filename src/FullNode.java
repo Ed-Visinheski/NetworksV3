@@ -132,8 +132,8 @@ public class FullNode implements FullNodeInterface{
                         byte[] keyHashID = hashID.computeHashID(key);
                         System.out.println("Key HashID: " + hashID.bytesToHex(keyHashID));
                         if(!checkIfCloserNodesExist(keyHashID)){
-                            keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName)), new HashMap<>());
-                            keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName))).put(key, value);
+                            keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n")), new HashMap<>());
+                            keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n"))).put(key, value);
                             writer.write("SUCCESS\n");
                         }
                         else{
@@ -149,7 +149,7 @@ public class FullNode implements FullNodeInterface{
                         for (int i = 0; i < keyLines; i++) {
                             keyToGet += reader.readLine() + "\n";
                         }
-                        int distance = hasher.calculateDistance(hasher.computeHashID(keyToGet), hasher.computeHashID(nodeName));
+                        int distance = hasher.calculateDistance(hasher.computeHashID(keyToGet), hasher.computeHashID(nodeName+ "\n"));
                         if (keyValueMap.get(distance).containsKey(keyToGet)) {
                             String valueSlit[] = keyValueMap.get(distance).get(keyToGet).split("\n");
                             writer.write("VALUE " + valueSlit.length + "\n" + keyValueMap.get(keyToGet));
@@ -213,7 +213,7 @@ public class FullNode implements FullNodeInterface{
     //returns false
     public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
         HashID hasher = new HashID();
-        int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName), keyHashID);
+        int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName + "\n"), keyHashID);
         if(networkMap.isEmpty() || networkMap.size() <= 3){
             return false;
         }

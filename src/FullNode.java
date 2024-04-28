@@ -100,8 +100,11 @@ public class FullNode implements FullNodeInterface{
             }
             String version = parts[1];
             System.out.println("Received START message from Client");
-            while ((!socket.isClosed())) {
+            while (socket != null && !socket.isClosed()) {
                 String command = reader.readLine();
+                if (command == null) {
+                    break;
+                }
                 parts = command.split(" ");
                 System.out.println("Received message from Client in format:\n" + command);
                 System.out.println("Message parts 0 : " + parts[0]);
@@ -148,17 +151,19 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case "GET?": {
-                        HashID hasher = new HashID();
                         int keyLines = Integer.parseInt(parts[1]);
-                        String keyToGet = "";
+                        StringBuilder keyToGetBuilder = new StringBuilder();
                         for (int i = 0; i < keyLines; i++) {
-                            keyToGet += reader.readLine() + "\n";
+                            keyToGetBuilder.append(reader.readLine()).append("\n");
                         }
-                        int distance = hasher.calculateDistance(hasher.computeHashID(keyToGet), hasher.computeHashID(nodeName+ "\n"));
-                        if (keyValueMap.get(distance).containsKey(keyToGet)) {
-                            String valueSlit[] = keyValueMap.get(distance).get(keyToGet).split("\n");
-                            String valueWithNewline = keyValueMap.get(distance).get(keyToGet).endsWith("\n") ? keyValueMap.get(distance).get(keyToGet) : keyValueMap.get(distance).get(keyToGet) + "\n";
-                            writer.write("VALUE " + valueSlit.length + "\n" + valueWithNewline);
+                        String keyToGet = keyToGetBuilder.toString().trim() + "\n"; // Ensuring newline is there
+                        byte[] keyHash = hashID.computeHashID(keyToGet);
+                        int distance = hashID.calculateDistance(keyHash, hashID.computeHashID(nodeName + "\n"));
+                        Map<String, String> distanceMap = keyValueMap.get(distance);
+                        if (distanceMap != null && distanceMap.containsKey(keyToGet)) {
+                            String value = distanceMap.get(keyToGet);
+                            String[] valueSplit = value.split("\n");
+                            writer.write("VALUE " + valueSplit.length + "\n" + value);
                             writer.flush();
                         } else {
                             writer.write("NOPE\n");
@@ -167,10 +172,14 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case "END": {
-                        System.out.println("Received END message from Client");
                         writer.write("END Client Ended Communication\n");
-                        socket.close();
-                        break;
+                        writer.flush();
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            System.err.println("Error closing socket: " + e.getMessage());
+                        }
+                        return;
                     }
                     case "ECHO?":{
                         writer.write("OHCE\n");

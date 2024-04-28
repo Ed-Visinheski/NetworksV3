@@ -417,8 +417,18 @@ public class FullNode implements FullNodeInterface{
                         addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
                         writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
                         writer.flush();
-                        if (discoverNetwork(distance, startingNodeName, nodeAddress ,socket, reader, writer)) {
-                            HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                        response = reader.readLine();
+                        if (response.startsWith("NODES")) {
+                            int nodeCount = Integer.parseInt(response.split(" ")[1]);
+                            Set<String> visitedNodes = new HashSet<>();
+                            for (int i = 0; i < nodeCount; i++) {
+                                String visitedNodeName = reader.readLine();
+                                String visitedNodeAddress = reader.readLine();
+                                visitedNodes.add(visitedNodeName);
+                            }
+                            if (discoverNetwork(distance, startingNodeName, nodeAddress ,socket, reader, writer, visitedNodes)) {
+                                HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                            }
                         }
                         break;
                     } else {
@@ -437,7 +447,7 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
+    private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer, Set<String> visitedNodes) throws Exception {
         HashID hashID = new HashID();
         byte[] currentNodeHash = hashID.computeHashID(currentNodeName + "\n");
         Map<String, String> closestNodes = findClosestToKey(currentNodeHash);
@@ -445,7 +455,6 @@ public class FullNode implements FullNodeInterface{
             System.out.println("No closest nodes found.");
             return false;
         }
-        Set<String> visitedNodes = new HashSet<>();
         for (Map.Entry<String, String> entry : closestNodes.entrySet()) {
             String node = entry.getKey();
             String address = entry.getValue();

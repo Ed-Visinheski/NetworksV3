@@ -437,9 +437,11 @@ public class FullNode implements FullNodeInterface{
             String visitedNodeName = entry.getKey();
             String visitedNodeAddress = entry.getValue();
             if(AddToNetworkMap(visitedNodeName, visitedNodeAddress)){
+                System.out.println("Added " + visitedNodeName + " to network map.");
                 writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
                 writer.flush();
                 String response = reader.readLine();
+                System.out.println("Received response from " + visitedNodeName + ": " + response);
                 if("NOTIFIED".equals(response)){
                     System.out.println("Notified " + visitedNodeName);
                 }

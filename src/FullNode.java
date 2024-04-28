@@ -130,6 +130,7 @@ public class FullNode implements FullNodeInterface{
                         value = value.endsWith("\n") ? value : value + "\n";  // Ensure ends with newline
                         System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
+                        System.out.println("Key HashID: " + hashID.bytesToHex(keyHashID));
                         if(!checkIfCloserNodesExist(keyHashID)){
                             keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName)), new HashMap<>());
                             keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName))).put(key, value);
@@ -176,9 +177,11 @@ public class FullNode implements FullNodeInterface{
                         Map<String, String> closestNodes = findClosestToKey(keyHashID);
                         if(closestNodes != null){
                             writer.write("NODES " + closestNodes.size() + "\n");
+                            String nearestResponce = "";
                             for(String node : closestNodes.keySet()){
-                                writer.write(node + "\n" + closestNodes.get(node) + "\n");
+                                nearestResponce = (node + "\n" + closestNodes.get(node) + "\n");
                             }
+                            writer.write(nearestResponce);
                             writer.flush();
                         }
                         else{
@@ -203,26 +206,31 @@ public class FullNode implements FullNodeInterface{
 
     }
 
-    // Ensure key and nodeName are appropriately formatted with a newline at the end
-    public boolean checkIfCloserNodesExist(byte[] keyHashID) {
-        if (networkMap.isEmpty() || keyHashID == null) {
-            return false; // Return false if the network is empty or keyHashID is null.
+    // Checks to see if there are 3 nodes at the same distance as the key
+    //If there aren't, checks to see if there are any nodes closer to the key
+    // Add to a map of the closest nodes until there are 3 nodes
+    //Start method by checking if the NetworkMap is empty or if it is smaller than or equal to 3
+    //returns false
+    public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
+        HashID hasher = new HashID();
+        int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName), keyHashID);
+        if(networkMap.isEmpty() || networkMap.size() <= 3){
+            return false;
         }
-
-        try {
-            HashID hashID = new HashID();
-            String currentNodeNameWithNewline = currentNodeName.endsWith("\n") ? currentNodeName : currentNodeName + "\n";
-            byte[] currentNodeHash = hashID.computeHashID(currentNodeNameWithNewline);
-            if (currentNodeHash == null) {
-                System.out.println("Failed to compute hash for currentNodeName.");
+        Map<String, String> closestNodes = findClosestToKey(keyHashID);
+        if(closestNodes != null){
+            //Checks to see if the current node is in the closest nodes
+            if(closestNodes.containsKey(nodeName)){
                 return false;
             }
-
-            int distance = hashID.calculateDistance(currentNodeHash, keyHashID);
-            Map<String, String> nodes = networkMap.get(distance);
-            return nodes != null && nodes.size() >= 3;
-        } catch (Exception e) {
-            System.out.println("Error in checkIfCloserNodesExist: " + e.getMessage());
+            else if(closestNodes.size() < 3){
+                return false;
+            }
+            else{
+                return true;
+            }
+        }
+        else {
             return false;
         }
     }

@@ -433,20 +433,30 @@ public class FullNode implements FullNodeInterface{
 
 
     private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer, Map<String, String> visitedNodes) throws Exception {
-        for(Map.Entry<String, String> entry : visitedNodes.entrySet()){
-            String visitedNodeName = entry.getKey();
-            String visitedNodeAddress = entry.getValue();
-            if(AddToNetworkMap(visitedNodeName, visitedNodeAddress)){
-                System.out.println("Added " + visitedNodeName + " to network map.");
-                writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
-                writer.flush();
-                String response = reader.readLine();
-                System.out.println("Received response from " + visitedNodeName + ": " + response);
-                if("NOTIFIED".equals(response)){
-                    System.out.println("Notified " + visitedNodeName);
-                }
-                else{
-                    System.out.println("Failed to notify " + visitedNodeName);
+        HashID hashID = new HashID();
+        for (Map.Entry<String, String> visitedNode : visitedNodes.entrySet()) {
+            String visitedNodeName = visitedNode.getKey();
+            String visitedNodeAddress = visitedNode.getValue();
+            byte[] visitedNodeHash = hashID.computeHashID(visitedNodeName + "\n");
+            int visitedNodeDistance = hashID.calculateDistance(visitedNodeHash, hashID.computeHashID(currentNodeName + "\n"));
+            if (visitedNodeDistance < currentDistance) {
+                addNodeToNetworkMap(visitedNodeDistance, visitedNodeName, visitedNodeAddress);
+                try (Socket visitedSocket = new Socket(visitedNodeAddress.split(":")[0], Integer.parseInt(visitedNodeAddress.split(":")[1]));
+                     BufferedReader visitedReader = new BufferedReader(new InputStreamReader(visitedSocket.getInputStream()));
+                     BufferedWriter visitedWriter = new BufferedWriter(new OutputStreamWriter(visitedSocket.getOutputStream()))){
+                    visitedWriter.write("START 1" + nodeName + "\n");
+                    visitedWriter.flush();
+                    visitedReader.readLine();
+                    visitedWriter.write("NOTIFY?\n" + currentNodeName + "\n" + currentNodeAddress + "\n");
+                    visitedWriter.flush();
+                    String response = visitedReader.readLine();
+                    if (!"NOTIFIED".equals(response)) {
+                        System.out.println("Failed to notify " + visitedNodeAddress);
+                        return false;
+                    }
+                } catch (IOException e) {
+                    System.out.println("Could not connect or communicate with " + visitedNodeAddress + ": " + e.getMessage());
+                    return false;
                 }
             }
         }

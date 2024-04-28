@@ -38,7 +38,6 @@ public class CmdLineStore {
 	    } else {
 		System.err.println("Could not contact network?");
 	    }
-
             return;
         }
     }

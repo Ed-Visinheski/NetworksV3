@@ -14,6 +14,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 // DO NOT EDIT starts
 interface FullNodeInterface {
@@ -27,6 +31,7 @@ public class FullNode implements FullNodeInterface{
     private Map<Integer, Map<String, String>> networkMap = new HashMap<>();
     // Map for the Key and the value
     private Map<Integer, Map<String,String>>keyValueMap = new HashMap<>();
+    private ExecutorService executorService = Executors.newCachedThreadPool();
     private ServerSocket serverSocket;
     private Socket socket;
     private String nodeName;
@@ -54,7 +59,9 @@ public class FullNode implements FullNodeInterface{
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
-            //connectToStartingNode(startingNodeName, startingNodeAddress);
+            HashID hashID = new HashID();
+            int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
+            networkMap.computeIfAbsent(distance, k -> new HashMap<>()).put(startingNodeName, startingNodeAddress);
             Thread thread = new Thread(() -> {
                 while (true) {
                     try {
@@ -66,8 +73,52 @@ public class FullNode implements FullNodeInterface{
                 }
             });
             thread.start();
+            connectToStartingNode(startingNodeName ,startingNodeAddress);
+            heartbeatConnections();
         } catch (Exception e) {
             System.out.println("Error creating thread.");
+        }
+    }
+
+    private void heartbeatConnections() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        scheduler.scheduleAtFixedRate(() -> {
+            if (networkMap.isEmpty()) {
+                System.out.println("Network map is empty, no heartbeat checks needed.");
+                return;
+            }
+
+            System.out.println("Heartbeat check started...");
+            networkMap.forEach((distance, nodes) -> {
+                new HashMap<>(nodes).forEach((nodeName, nodeAddress) -> {
+                    executorService.submit(() -> {
+                        if (!sendEchoRequest(nodeName, nodeAddress)) {
+                            System.out.println("No response from node " + nodeName + " at " + nodeAddress + ". Removing from network map.");
+                            // Safe removal
+                            nodes.remove(nodeName, nodeAddress);
+                        }
+                    });
+                });
+            });
+        }, 0, 60, TimeUnit.SECONDS); // Start immediately and repeat every 60 seconds
+    }
+
+    private boolean sendEchoRequest(String nodeName, String nodeAddress) {
+        try (Socket socket = new Socket()) {
+            String address = nodeAddress.split(":")[0];
+            int port = Integer.parseInt(nodeAddress.split(":")[1]);
+            socket.connect(new InetSocketAddress(address, port), 5000); // Timeout after 5 seconds
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                writer.write("ECHO?\n");
+                writer.flush();
+                String response = reader.readLine();
+                return "OHCE".equals(response);
+            }
+        } catch (IOException e) {
+            System.out.println("Error sending echo request to node " + nodeName + ": " + e.getMessage());
+            return false;
         }
     }
 
@@ -324,44 +375,194 @@ public class FullNode implements FullNodeInterface{
 
 
 
-    public void connectToStartingNode(String startingNodeName, String startingNodeAddress) {
-        try {
-            String[] addressParts = startingNodeAddress.split(":");
-            InetAddress ipAddress = InetAddress.getByName(addressParts[0]);
-            int port = Integer.parseInt(addressParts[1]);
+    private void connectToStartingNode(String startingNodeName,String nodeAddress) {
+        new Thread(() -> {
+            String address = nodeAddress.split(":")[0];
+            int port = Integer.parseInt(nodeAddress.split(":")[1]);
+            try (Socket socket = new Socket(address, port);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
+                writer.write("START 1 " + this.nodeName + "\n");
+                writer.flush();
+                String response;
+                while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed() ) {
+                    if(response.contains("START")){
+                        String[] parts = response.split(" ");
+                        if(parts.length != 3){
+                            System.out.println("Invalid START message.");
+                            writer.write("END Invalid START message\n");
+                            writer.flush();
+                            reader.readLine();
+                            socket.close();
+                            reader.close();
+                            writer.close();
+                            return;
+                        }
+                        String version = parts[1];
+                        System.out.println("Received START message from " + parts[2]);
+                        HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
 
-            try {
-                socket = new Socket(ipAddress, port);
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-                BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                System.out.println("Connected to server: " + startingNodeName + " at " + startingNodeAddress);
-
-                    writer.write("START 1 " + nodeName + "\n");
-                    writer.flush();
-                    System.out.println("Sent START message to server" + startingNodeName);
-                    String line;
-                    Scanner scanner = new Scanner(System.in);
-                    line = reader.readLine();
-                    System.out.println(line);
-                    while (line != null && !socket.isClosed() && !line.contains("END")){
-                        String input = scanner.nextLine();
-                        writer.write(input + "\n");
-                        writer.flush();
-                        reader.readLine();
-                        System.out.println(reader.readLine());
                     }
+                }
             } catch (IOException e) {
-                System.out.println("Could not connect to server " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
+                System.out.println("Could not connect or communicate with " + nodeAddress + ": " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.out.println("Could not connect to server " + startingNodeName + " at " + startingNodeAddress + ": " + e.getMessage());
-        }
+        }).start();
     }
 
-    //Will handle communications between this node and the starting node
+    private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
+        try {
+            HashID hashID = new HashID();
+            writer.write("NOTIFY " + nodeName + " " + address + "\n");
+            writer.flush();
+            String response;
+            while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed()) {
+                String[] parts = response.split(" ");
+                switch (parts[0]) {
+                    case "NOTIFIED": {
+                        System.out.println("Notified " + nodeAddress);
+                        break;
+                    }
+                    case "END": {
+                        writer.write("END Client Ended Communication\n");
+                        writer.flush();
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            System.err.println("Error closing socket: " + e.getMessage());
+                        }
+                        return;
+                    }
+                    case "NOPE": {
+                        System.out.println("Failed to notify " + nodeAddress);
+                        break;
+                    }
+                    case "VALUE": {
+                        System.out.println("Received VALUE message from " + nodeAddress + "\n" + response);
+                        break;
+                    }
 
+                    case "NODES": {
+                        System.out.println("Received NODES message from " + nodeAddress + "\n" + response);
+                        break;
+                    }
 
+                    case "SUCCESS": {
+                        System.out.println("Successfully notified " + nodeAddress);
+                        break;
+                    }
+                    case "OHCE": {
+                        writer.write("Received ECHO\n");
+                        writer.flush();
+                        break;
+                    }
 
+                    case "ECHO?": {
+                        writer.write("OHCE\n");
+                        writer.flush();
+                        break;
+                    }
+                    case "NOFITY?": {
+                        String name = reader.readLine();
+                        String address = reader.readLine();
+                        if (AddToNetworkMap(name, address)) {
+                            writer.write("NOTIFIED\n");
+                            writer.flush();
+                        }
+                        break;
+                    }
+                    case "NEAREST?": {
+                        String hexHashID = parts[1];
+                        byte[] keyHashID = hashID.hexStringToByteArray(hexHashID);
+                        Map<String, String> closestNodes = findClosestToKey(keyHashID);
+                        if(closestNodes != null){
+                            writer.write("NODES " + closestNodes.size() + "\n");
+                            String nearestResponce = "";
+                            for(String node : closestNodes.keySet()){
+                                nearestResponce = (node + "\n" + closestNodes.get(node) + "\n");
+                            }
+                            writer.write(nearestResponce);
+                            writer.flush();
+                        }
+                        else{
+                            writer.write("NOPE\n");
+                            writer.flush();
+                        }
+                        break;
+                    }
+
+                    case "PUT?":{
+                        System.out.println("Received PUT? message from " + nodeAddress + "\n" + response);
+                        int keyLines = Integer.parseInt(parts[1]);
+                        int valueLines = Integer.parseInt(parts[2]);
+                        String key = "";
+                        String value = "";
+                        for(int i = 0; i < keyLines; i++){
+                            key += reader.readLine() + "\n";
+                        }
+                        key = key.endsWith("\n") ? key : key + "\n";  // Ensure ends with newline
+                        System.out.println("Key:\n" + key);
+                        for(int i = 0; i < valueLines; i++){
+                            value += reader.readLine() + "\n";
+                        }
+                        value = value.endsWith("\n") ? value : value + "\n";  // Ensure ends with newline
+                        System.out.println("Value:\n" + value);
+                        byte[] keyHashID = hashID.computeHashID(key);
+                        System.out.println("Key HashID: " + hashID.bytesToHex(keyHashID));
+                        if(!checkIfCloserNodesExist(keyHashID)){
+                            keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n")), new HashMap<>());
+                            keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n"))).put(key, value);
+                            writer.write("SUCCESS\n");
+                        }
+                        else{
+                            writer.write("NOPE\n");
+                        }
+                        writer.flush();
+                        break;
+                    }
+
+                    case "GET?":{
+                        int keyLines = Integer.parseInt(parts[1]);
+                        StringBuilder keyToGetBuilder = new StringBuilder();
+                        for (int i = 0; i < keyLines; i++) {
+                            keyToGetBuilder.append(reader.readLine()).append("\n");
+                        }
+                        String keyToGet = keyToGetBuilder.toString().trim() + "\n"; // Ensuring newline is there
+                        byte[] keyHash = hashID.computeHashID(keyToGet);
+                        int distance = hashID.calculateDistance(keyHash, hashID.computeHashID(nodeName + "\n"));
+                        Map<String, String> distanceMap = keyValueMap.get(distance);
+                        if (distanceMap != null && distanceMap.containsKey(keyToGet)) {
+                            String value = distanceMap.get(keyToGet);
+                            String[] valueSplit = value.split("\n");
+                            writer.write("VALUE " + valueSplit.length + "\n" + value);
+                            writer.flush();
+                        } else {
+                            writer.write("NOPE\n");
+                            writer.flush();
+                        }
+                        break;
+                    }
+
+                    default:
+                        System.out.println("Invalid response from " + nodeAddress + ": " + response);
+                        writer.write("END Invalid response\n");
+                        writer.flush();
+                        socket.close();
+                        break;
+                }
+
+                Scanner scanner = new Scanner(System.in);
+                System.out.println("Enter a command: ");
+                String command = scanner.nextLine();
+                writer.write(command + "\n");
+                writer.flush();
+            }
+        } catch (IOException e) {
+            System.out.println("Error handling server: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public static void main(String[] args) {
     }

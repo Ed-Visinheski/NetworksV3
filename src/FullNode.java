@@ -422,7 +422,7 @@ public class FullNode implements FullNodeInterface{
     private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {
             HashID hashID = new HashID();
-            writer.write("NOTIFY \n" + nodeName + "\n" + address + "\n");
+            writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
             writer.flush();
             String response;
             System.out.println("Notifying " + nodeAddress);

@@ -29,15 +29,12 @@ interface FullNodeInterface {
 public class FullNode implements FullNodeInterface{
 
     private Map<Integer, Map<String, String>> networkMap = new HashMap<>();
-    // Map for the Key and the value
     private Map<Integer, Map<String,String>>keyValueMap = new HashMap<>();
     private ExecutorService executorService = Executors.newCachedThreadPool();
     private ServerSocket serverSocket;
     private Socket socket;
     private String nodeName;
     private String address;
-    private String currentNodeName;
-    private String currentNodeAddress;
     private Random random = new Random();
 
     public boolean listen(String ipAddress, int portNumber) {
@@ -81,19 +78,17 @@ public class FullNode implements FullNodeInterface{
     private void heartbeatConnections() {
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-        // Delay the start of the heartbeat to give more time for initial connection setup
         scheduler.scheduleAtFixedRate(() -> {
             if (networkMap.isEmpty()) {
                 System.out.println("Network map is empty, no heartbeat checks needed.");
                 return;
             }
-            System.out.println("Heartbeat check started...");
+            System.out.println("Heartbeat check started");
             networkMap.forEach((distance, nodes) -> {
                 new HashMap<>(nodes).forEach((nodeName, nodeAddress) -> {
-                    // Skip the heartbeat check for the node's own address
                     if (!nodeAddress.equals(this.address)) {
                         executorService.submit(() -> {
-                            if (!sendEchoRequestWithRetries(nodeName, nodeAddress, 3)) { // 3 retries
+                            if (!SendEchoRequest(nodeName, nodeAddress, 3)) {
                                 System.out.println("No response from node " + nodeName + " at " + nodeAddress + ". Removing from network map.");
                                 nodes.remove(nodeName, nodeAddress);
                             }
@@ -103,24 +98,24 @@ public class FullNode implements FullNodeInterface{
                     }
                 });
             });
-        }, 50, 60, TimeUnit.SECONDS); // Delay start by 50 seconds, repeat every 60 seconds
+        }, 50, 60, TimeUnit.SECONDS);
     }
 
-    private boolean sendEchoRequestWithRetries(String nodeName, String nodeAddress, int retries) {
+    private boolean SendEchoRequest(String nodeName, String nodeAddress, int retries) {
         int attempt = 0;
         while (attempt < retries) {
-            if (sendEchoRequest(nodeName, nodeAddress)) {
+            if (SendEchoRequest(nodeName, nodeAddress)) {
                 return true;
             }
             attempt++;
             try {
-                Thread.sleep(2000); // Wait 2 seconds before retrying
+                Thread.sleep(2000);
             } catch (InterruptedException ignored) {}
         }
         return false;
     }
 
-    private boolean sendEchoRequest(String nodeName, String nodeAddress) {
+    private boolean SendEchoRequest(String nodeName, String nodeAddress) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1])), 10000); // Timeout after 10 seconds
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
@@ -158,7 +153,6 @@ public class FullNode implements FullNodeInterface{
         }
     }
 
-    //Handles the communication between the current node and a temporary node which has connected to the current node
     public void HandleClient(Socket socket, String startingNodeName, String startingAddress) {
         try {
             HashID hashID = new HashID();
@@ -175,15 +169,14 @@ public class FullNode implements FullNodeInterface{
                 return;
             }
             String version = parts[1];
-            System.out.println("Received START message from Client");
+            System.out.println("Received START message from " + parts[2]);
             while (socket != null && !socket.isClosed()) {
                 String command = reader.readLine();
                 if (command == null) {
                     break;
                 }
                 parts = command.split(" ");
-                System.out.println("Received message from Client in format:\n" + command);
-                System.out.println("Message parts 0 : " + parts[0]);
+                System.out.println("Received message from " + startingAddress + ": " + command);
                 switch (parts[0]){
                     case"NOTIFY?":{
                         String name = reader.readLine();
@@ -195,7 +188,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case"PUT?": {
-                        System.out.println("Received PUT? message from Client in format:\n" + command);
+                        System.out.println("Received PUT? message from " + startingAddress + "\n" + command);
                         int keyLines = Integer.parseInt(parts[1]);
                         int valueLines = Integer.parseInt(parts[2]);
                         String key = "";
@@ -203,15 +196,13 @@ public class FullNode implements FullNodeInterface{
                         for(int i = 0; i < keyLines; i++){
                             key += reader.readLine() + "\n";
                         }
-                        key = key.endsWith("\n") ? key : key + "\n";  // Ensure ends with newline
+                        key = key.endsWith("\n") ? key : key + "\n";
                         System.out.println("Key:\n" + key);
                         for(int i = 0; i < valueLines; i++){
                             value += reader.readLine() + "\n";
                         }
-                        value = value.endsWith("\n") ? value : value + "\n";  // Ensure ends with newline
-                        System.out.println("Value:\n" + value);
+                        value = value.endsWith("\n") ? value : value + "\n";
                         byte[] keyHashID = hashID.computeHashID(key);
-                        System.out.println("Key HashID: " + hashID.bytesToHex(keyHashID));
                         if(!checkIfCloserNodesExist(keyHashID)){
                             keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n")), new HashMap<>());
                             keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName + "\n"))).put(key, value);
@@ -245,6 +236,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case "END": {
+                        System.out.println("END message received from " + startingAddress);
                         writer.write("END Client Ended Communication\n");
                         writer.flush();
                         try {
@@ -296,11 +288,6 @@ public class FullNode implements FullNodeInterface{
 
     }
 
-    // Checks to see if there are 3 nodes at the same distance as the key
-    //If there aren't, checks to see if there are any nodes closer to the key
-    // Add to a map of the closest nodes until there are 3 nodes
-    //Start method by checking if the NetworkMap is empty or if it is smaller HA or equal to 3
-    //returns false
     public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
         HashID hasher = new HashID();
         int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName + "\n"), keyHashID);
@@ -309,7 +296,6 @@ public class FullNode implements FullNodeInterface{
         }
         Map<String, String> closestNodes = findClosestToKey(keyHashID);
         if(closestNodes != null){
-            //Checks to see if the current node is in the closest nodes
             if(closestNodes.containsKey(nodeName)){
                 return false;
             }
@@ -332,14 +318,14 @@ public class FullNode implements FullNodeInterface{
             byte[] nodeHashID = hasher.computeHashID(nameWithNewline);
             if(nodeHashID == null) {
                 System.out.println("Failed to compute hash for node name: " + name);
-                return false; // Exit if hash computation fails
+                return false;
             }
 
             String nodeNameWithNewline = nodeName.endsWith("\n") ? nodeName : nodeName + "\n";
             byte[] currentNodeHash = hasher.computeHashID(nodeNameWithNewline);
             if(currentNodeHash == null) {
                 System.out.println("Failed to compute hash for current node name.");
-                return false; // Exit if hash computation fails
+                return false;
             }
 
             int distance = hasher.calculateDistance(nodeHashID, currentNodeHash);
@@ -351,32 +337,25 @@ public class FullNode implements FullNodeInterface{
         return false;
     }
 
-
-    //Find the 3 closest nodes to that the key's hashID's
-    //Returns a map of the closest nodes
-
     public Map<String, String> findClosestToKey(byte[] keyHashID) {
         try {
             HashID hasher = new HashID();
             if (networkMap.isEmpty()) {
-                System.out.println("The network map is empty.");
                 return null;
             }
             String nodeNameWithNewline = nodeName.endsWith("\n") ? nodeName : nodeName + "\n";
             int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeNameWithNewline), keyHashID);
             TreeMap<Integer, Map<String, String>> sortedMap = new TreeMap<>();
 
-            // Collect all nodes with their distances, include the current node explicitly if needed
             for (Map.Entry<Integer, Map<String, String>> entry : networkMap.entrySet()) {
                 int distance = Math.abs(entry.getKey() - keyDistance);
                 sortedMap.put(distance, entry.getValue());
             }
 
             Map<String, String> closestNodes = new HashMap<>();
-            // Ensure the current node is considered if it's one of the closest or if not enough nodes are available
             if (networkMap.containsKey(0)) {
                 Map<String, String> zeroDistanceNodes = networkMap.get(0);
-                closestNodes.putAll(zeroDistanceNodes);  // Includes current node if present at distance 0
+                closestNodes.putAll(zeroDistanceNodes);
             }
 
             for (Map.Entry<Integer, Map<String, String>> entry : sortedMap.entrySet()) {

@@ -157,7 +157,8 @@ public class FullNode implements FullNodeInterface{
                         int distance = hasher.calculateDistance(hasher.computeHashID(keyToGet), hasher.computeHashID(nodeName+ "\n"));
                         if (keyValueMap.get(distance).containsKey(keyToGet)) {
                             String valueSlit[] = keyValueMap.get(distance).get(keyToGet).split("\n");
-                            writer.write("VALUE " + valueSlit.length + "\n" + keyValueMap.get(keyToGet));
+                            String valueWithNewline = keyValueMap.get(distance).get(keyToGet).endsWith("\n") ? keyValueMap.get(distance).get(keyToGet) : keyValueMap.get(distance).get(keyToGet) + "\n";
+                            writer.write("VALUE " + valueSlit.length + "\n" + valueWithNewline);
                             writer.flush();
                         } else {
                             writer.write("NOPE\n");

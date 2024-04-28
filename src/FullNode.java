@@ -178,14 +178,11 @@ public class FullNode implements FullNodeInterface{
                 System.out.println("Received message from Client in format:\n" + command);
                 System.out.println("Message parts 0 : " + parts[0]);
                 switch (parts[0]){
-                    case"NOTIFY":{
+                    case"NOTIFY?":{
                         String name = parts[1];
                         String address = parts[2];
                         if (AddToNetworkMap(name, address)) {
                             writer.write("NOTIFIED\n");
-                            writer.flush();
-                        } else {
-                            writer.write("NOPE\n");
                             writer.flush();
                         }
                         break;

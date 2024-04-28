@@ -109,8 +109,13 @@ public class FullNode implements FullNodeInterface{
                     case"NOTIFY":{
                         String name = parts[1];
                         String address = parts[2];
-                        AddToNetworkMap(name, address);
-                        writer.write("NOTIFIED\n");
+                        if (AddToNetworkMap(name, address)) {
+                            writer.write("NOTIFIED\n");
+                            writer.flush();
+                        } else {
+                            writer.write("NOPE\n");
+                            writer.flush();
+                        }
                         break;
                     }
                     case"PUT?": {
@@ -235,33 +240,30 @@ public class FullNode implements FullNodeInterface{
         }
     }
 
-
-
-
-
-
-    public void AddToNetworkMap(String name, String address) {
+    public boolean AddToNetworkMap(String name, String address) {
         try {
             HashID hasher = new HashID();
             String nameWithNewline = name.endsWith("\n") ? name : name + "\n";
             byte[] nodeHashID = hasher.computeHashID(nameWithNewline);
             if(nodeHashID == null) {
                 System.out.println("Failed to compute hash for node name: " + name);
-                return; // Exit if hash computation fails
+                return false; // Exit if hash computation fails
             }
 
             String nodeNameWithNewline = nodeName.endsWith("\n") ? nodeName : nodeName + "\n";
             byte[] currentNodeHash = hasher.computeHashID(nodeNameWithNewline);
             if(currentNodeHash == null) {
                 System.out.println("Failed to compute hash for current node name.");
-                return; // Exit if hash computation fails
+                return false; // Exit if hash computation fails
             }
 
             int distance = hasher.calculateDistance(nodeHashID, currentNodeHash);
             networkMap.computeIfAbsent(distance, k -> new HashMap<>()).put(name, address);
+            return true;
         } catch (Exception e) {
             System.out.println("Error adding to network map: " + e.getMessage());
         }
+        return false;
     }
 
 

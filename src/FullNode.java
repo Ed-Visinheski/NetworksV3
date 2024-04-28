@@ -103,7 +103,7 @@ public class FullNode implements FullNodeInterface{
             while ((!socket.isClosed())) {
                 String command = reader.readLine();
                 parts = command.split(" ");
-                System.out.println("Received message from Client in format:\n" + line);
+                System.out.println("Received message from Client in format:\n" + command);
                 System.out.println("Message parts 0 : " + parts[0]);
                 switch (parts[0]){
                     case"NOTIFY":{
@@ -114,7 +114,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case"PUT?": {
-                        System.out.println("Received PUT? message from Client in format:\n" + line);
+                        System.out.println("Received PUT? message from Client in format:\n" + command);
                         int keyLines = Integer.parseInt(parts[1]);
                         int valueLines = Integer.parseInt(parts[2]);
                         String key = "";
@@ -201,51 +201,56 @@ public class FullNode implements FullNodeInterface{
 
     }
 
-    public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
-        if(networkMap.isEmpty()){
-            return false;
+    // Ensure key and nodeName are appropriately formatted with a newline at the end
+    public boolean checkIfCloserNodesExist(byte[] keyHashID) {
+        if(networkMap.isEmpty() || keyHashID == null){
+            return false; // Return false if the network is empty or keyHashID is null.
         }
-        else{
+
+        try {
             HashID hashID = new HashID();
-            int distance = hashID.calculateDistance(hashID.computeHashID(currentNodeName), keyHashID);
-            //Checks to see if there are at least 3 nodes in the network that are closer to the key's hashID
-            //than the current node
-            if(networkMap.containsKey(distance)){
-                Map<String, String> nodes = networkMap.get(distance);
-                if(nodes.size() >= 3){
-                    return true;
-                }
-                else{
-                    return false;
-                }
-            }
-            else{
+            String nodeNameWithNewline = currentNodeName.endsWith("\n") ? currentNodeName : currentNodeName + "\n";
+            byte[] currentNodeHash = hashID.computeHashID(nodeNameWithNewline);
+            if(currentNodeHash == null) {
+                System.out.println("Failed to compute hash for currentNodeName.");
                 return false;
             }
+
+            int distance = hashID.calculateDistance(currentNodeHash, keyHashID);
+            Map<String, String> nodes = networkMap.get(distance);
+            return nodes != null && nodes.size() >= 3;
+        } catch (Exception e) {
+            System.out.println("Error in checkIfCloserNodesExist: " + e.getMessage());
+            return false;
         }
     }
+
 
 
     public void AddToNetworkMap(String name, String address) {
         try {
             HashID hasher = new HashID();
-            byte[] nodeHashID = hasher.computeHashID(name);
-            int distance = hasher.calculateDistance(nodeHashID, hasher.computeHashID(nodeName));
-            if (networkMap.containsKey(distance)) {
-                Map<String, String> nodes = networkMap.get(distance);
-                if (nodes.size() < 3) {
-                    nodes.put(name, address);
-                }
+            String nameWithNewline = name.endsWith("\n") ? name : name + "\n";
+            byte[] nodeHashID = hasher.computeHashID(nameWithNewline);
+            if(nodeHashID == null) {
+                System.out.println("Failed to compute hash for node name: " + name);
+                return; // Exit if hash computation fails
             }
-            else {
-                Map<String, String> nodes = new HashMap<>();
-                nodes.put(name, address);
-                networkMap.put(distance, nodes);
+
+            String nodeNameWithNewline = nodeName.endsWith("\n") ? nodeName : nodeName + "\n";
+            byte[] currentNodeHash = hasher.computeHashID(nodeNameWithNewline);
+            if(currentNodeHash == null) {
+                System.out.println("Failed to compute hash for current node name.");
+                return; // Exit if hash computation fails
             }
+
+            int distance = hasher.calculateDistance(nodeHashID, currentNodeHash);
+            networkMap.computeIfAbsent(distance, k -> new HashMap<>()).put(name, address);
         } catch (Exception e) {
-            System.out.println("Error adding to network map.");
+            System.out.println("Error adding to network map: " + e.getMessage());
         }
     }
+
 
     //Find the 3 closest nodes to that the key's hashID's
     //Returns a map of the closest nodes

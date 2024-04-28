@@ -440,27 +440,51 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private boolean discoverNetwork(int currentDistance, String currentNodeName, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
-        writer.write("NEAREST?\n");
-        writer.flush();
+    private boolean discoverNetwork(int currentDistance, String currentNodeName, Socket socket, BufferedReader reader, BufferedWriter writer) throws IOException {
+        try {
+            String hexName = new HashID().bytesToHex(new HashID().computeHashID(currentNodeName + "\n"));
+            writer.write("NEAREST? " + hexName + "\n");
+            writer.flush();
 
-        String line;
-        while ((line = reader.readLine()) != null && !line.equals("END")) {
-            if (line.startsWith("NODES")) {
-                int count = Integer.parseInt(line.split(" ")[1]);
-                for (int i = 0; i < count; i++) {
-                    String nodeName = reader.readLine();
-                    String nodeAddress = reader.readLine();
-                    HashID hashID = new HashID();
-                    int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(currentNodeName + "\n"));
-                    int cumulativeDistance = currentDistance + distance;
+            String line;
+            boolean nodesStarted = false;
+            int expectedNodesCount = 0;
+            int processedNodesCount = 0;
 
-                    addNodeToNetworkMap(cumulativeDistance, nodeName, nodeAddress);
+            while ((line = reader.readLine()) != null) {
+                System.out.println("Discovery response: " + line);
+                if (line.equals("END")) {
+                    break;
                 }
-                return true; // Discovery completed successfully
+                if (line.startsWith("NODES")) {
+                    try {
+                        expectedNodesCount = Integer.parseInt(line.split(" ")[1]);
+                        nodesStarted = true;
+                        continue; // Skip to processing nodes
+                    } catch (NumberFormatException e) {
+                        System.out.println("Error parsing NODES count: " + line);
+                        return false; // Exit if the node count is malformed
+                    }
+                }
+                if (nodesStarted && processedNodesCount < expectedNodesCount) {
+                    String nodeName = line; // Assume the current line is the node name
+                    String nodeAddress = reader.readLine(); // Read the next line as the node address
+                    if (nodeAddress == null) {
+                        System.out.println("Incomplete node data received.");
+                        break;
+                    }
+                    HashID hashID = new HashID();
+                    int distance = hashID.calculateDistance(hashID.computeHashID(this.nodeName + "\n"), hashID.computeHashID(nodeName + "\n"));
+                    int cumulativeDistance = currentDistance + distance;
+                    addNodeToNetworkMap(cumulativeDistance, nodeName, nodeAddress);
+                    processedNodesCount++;
+                }
             }
+            return processedNodesCount == expectedNodesCount;
+        } catch (Exception e) {
+            System.out.println("Exception during network discovery: " + e.getMessage());
+            return false;
         }
-        return false; // Discovery process did not complete successfully
     }
 
 

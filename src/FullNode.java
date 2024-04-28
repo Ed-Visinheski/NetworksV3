@@ -487,6 +487,7 @@ public class FullNode implements FullNodeInterface{
                     case "NOFITY?": {
                         String name = reader.readLine();
                         String address = reader.readLine();
+                        System.out.println("Received NOTIFY? message from " + nodeAddress + "\n" + response);
                         if (AddToNetworkMap(name, address)) {
                             writer.write("NOTIFIED\n");
                             writer.flush();

@@ -205,15 +205,15 @@ public class FullNode implements FullNodeInterface{
 
     // Ensure key and nodeName are appropriately formatted with a newline at the end
     public boolean checkIfCloserNodesExist(byte[] keyHashID) {
-        if(networkMap.isEmpty() || keyHashID == null){
+        if (networkMap.isEmpty() || keyHashID == null) {
             return false; // Return false if the network is empty or keyHashID is null.
         }
 
         try {
             HashID hashID = new HashID();
-            String nodeNameWithNewline = currentNodeName.endsWith("\n") ? currentNodeName : currentNodeName + "\n";
-            byte[] currentNodeHash = hashID.computeHashID(nodeNameWithNewline);
-            if(currentNodeHash == null) {
+            String currentNodeNameWithNewline = currentNodeName.endsWith("\n") ? currentNodeName : currentNodeName + "\n";
+            byte[] currentNodeHash = hashID.computeHashID(currentNodeNameWithNewline);
+            if (currentNodeHash == null) {
                 System.out.println("Failed to compute hash for currentNodeName.");
                 return false;
             }
@@ -226,6 +226,9 @@ public class FullNode implements FullNodeInterface{
             return false;
         }
     }
+
+
+
 
 
 

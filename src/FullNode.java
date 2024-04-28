@@ -128,10 +128,20 @@ public class FullNode implements FullNodeInterface{
             socket.connect(new InetSocketAddress(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1])), 10000); // Timeout after 10 seconds
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-                writer.write("ECHO?\n");
+                writer.write("START 1 " + this.nodeName + "\n");
                 writer.flush();
-                String response = reader.readLine();
-                return "OHCE".equals(response);
+                String responce = reader.readLine();
+                if(responce.equals("START 1 "+ nodeName)){
+                    writer.write("ECHO?\n");
+                    writer.flush();
+                    String response = reader.readLine();
+                    return "OHCE".equals(response);
+                }
+                else{
+                    writer.write("END wrong start\n");
+                    writer.flush();
+                    return false;
+                }
             }
         } catch (IOException e) {
             System.out.println("Error sending echo request to node " + nodeName + ": " + e.getMessage());
@@ -252,7 +262,6 @@ public class FullNode implements FullNodeInterface{
                         writer.flush();
                         break;
                     }
-                    //NAREST? <HashID>
                     case "NEAREST?": {
                         String hexHashID = parts[1];
                         byte[] keyHashID = hashID.hexStringToByteArray(hexHashID);
@@ -263,6 +272,7 @@ public class FullNode implements FullNodeInterface{
                             for(String node : closestNodes.keySet()){
                                 nearestResponce = (node + "\n" + closestNodes.get(node) + "\n");
                             }
+                            System.out.println("Sending NEAREST? response to " + startingAddress + "\n" + nearestResponce);
                             writer.write(nearestResponce);
                             writer.flush();
                         }
@@ -292,7 +302,7 @@ public class FullNode implements FullNodeInterface{
     // Checks to see if there are 3 nodes at the same distance as the key
     //If there aren't, checks to see if there are any nodes closer to the key
     // Add to a map of the closest nodes until there are 3 nodes
-    //Start method by checking if the NetworkMap is empty or if it is smaller than or equal to 3
+    //Start method by checking if the NetworkMap is empty or if it is smaller HA or equal to 3
     //returns false
     public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
         HashID hasher = new HashID();
@@ -355,8 +365,8 @@ public class FullNode implements FullNodeInterface{
                 System.out.println("The network map is empty.");
                 return null;
             }
-
-            int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName), keyHashID);
+            String nodeNameWithNewline = nodeName.endsWith("\n") ? nodeName : nodeName + "\n";
+            int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeNameWithNewline), keyHashID);
             TreeMap<Integer, Map<String, String>> sortedMap = new TreeMap<>();
 
             // Collect all nodes with their distances, include the current node explicitly if needed
@@ -501,6 +511,7 @@ public class FullNode implements FullNodeInterface{
                             for(String node : closestNodes.keySet()){
                                 nearestResponce = (node + "\n" + closestNodes.get(node) + "\n");
                             }
+                            System.out.println("Sending NEAREST? response to " + nodeAddress + "\n" + nearestResponce);
                             writer.write(nearestResponce);
                             writer.flush();
                         }

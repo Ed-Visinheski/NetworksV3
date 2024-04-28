@@ -448,15 +448,17 @@ public class FullNode implements FullNodeInterface{
             System.out.println("No closest nodes found.");
             return false;
         }
+        Set<String> visitedNodes = new HashSet<>();
         for (Map.Entry<String, String> entry : closestNodes.entrySet()) {
             String node = entry.getKey();
             String address = entry.getValue();
-            if (node.equals(currentNodeName)) {
+            if (node.equals(currentNodeName) || visitedNodes.contains(node)) {
                 continue;
             }
+            visitedNodes.add(node);
             try (Socket nodeSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
-                 BufferedWriter nodeWriter = new BufferedWriter(new OutputStreamWriter(nodeSocket.getOutputStream()))){
+                 BufferedWriter nodeWriter = new BufferedWriter(new OutputStreamWriter(nodeSocket.getOutputStream()))) {
                 nodeWriter.write("NEAREST? " + hashID.bytesToHex(currentNodeHash) + "\n");
                 nodeWriter.flush();
                 String response = nodeReader.readLine();
@@ -468,9 +470,10 @@ public class FullNode implements FullNodeInterface{
                 for (int i = 0; i < nodeCount; i++) {
                     String nodeName = nodeReader.readLine();
                     String nodeAddress = nodeReader.readLine();
-                    if (nodeName.equals(currentNodeName)) {
+                    if (nodeName.equals(currentNodeName) || visitedNodes.contains(nodeName)) {
                         continue;
                     }
+                    visitedNodes.add(nodeName);
                     int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), currentNodeHash);
                     if (networkMap.containsKey(distance)) {
                         networkMap.get(distance).put(nodeName, nodeAddress);
@@ -479,9 +482,6 @@ public class FullNode implements FullNodeInterface{
                         networkMap.get(distance).put(nodeName, nodeAddress);
                     }
                 }
-            } catch (IOException e) {
-                System.out.println("Error communicating with node " + node + ": " + e.getMessage());
-                return false;
             }
         }
         return true;

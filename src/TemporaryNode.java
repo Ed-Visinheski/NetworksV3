@@ -40,7 +40,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             contactNodeName = startingNodeName;
             contactNodeAddress = startingNodeAddress;
-            nodeName = "eduardo.cook-visinheski@city.ac.uk:FullNode," + random.nextInt(10000);
+            nodeName = "eduardo.cook-visinheski@city.ac.uk:FullNode," + random.nextInt(99999);
             String[] parts = startingNodeAddress.split(":");
             if (parts.length != 2) {
                 System.out.println("Invalid address format. Please use IP:Port format.");
@@ -117,35 +117,53 @@ public class TemporaryNode implements TemporaryNodeInterface {
 
     public boolean store(String key, String value) {
         try{
-            //Calculate number of lines in the key and value
+            if (socket == null || socket.isClosed() || !socket.isConnected()) {
+                System.err.println("Socket is closed or not connected.");
+                return false;  // Consider reconnecting here
+            }
+
+            System.out.println("Storing key: " + key);
+            HashID hasher = new HashID();
+            byte[] hashedKey = hasher.computeHashID(key);
+            String hashedKeyString = hasher.bytesToHex(hashedKey);
+            System.out.println("Hashed key: " + hashedKeyString);
+
             String[] keyLines = key.split("\n");
             String[] valueLines = value.split("\n");
             String keyMessage = "PUT? " + keyLines.length + " " + valueLines.length + "\n";
-            System.out.println("Key message: " + keyMessage);
             for (String line : keyLines) {
                 keyMessage += line + "\n";
             }
             for (String line : valueLines) {
                 keyMessage += line + "\n";
             }
+
             writer.write(keyMessage);
             writer.flush();
-            System.out.println("Sending message: " + keyMessage);
+
             String response = reader.readLine();
-            if(response.equals("SUCCESS")){
-                writer.write("END Message Stored Successfully\n");
-                writer.flush();
-                closeConnection();
-                return true;
-            } else {
-                writer.write("END Message Storage Failed\n");
-                closeConnection();
+            if (response == null) {
+                System.out.println("Response from server is null, possibly connection was closed.");
                 return false;
             }
-        } catch (Exception e) {
-            System.out.println("FAILED");
-            closeConnection();
+
+            System.out.println("Response: " + response);
+            if (response.equals("SUCCESS")) {
+                return true;
+            } else {
+                return handleNearestNodes(hashedKeyString, keyMessage, "PUT?") != null;
+            }
+        } catch (UnknownHostException e) {
+            System.err.println("Unknown host: " + e.getMessage());
             return false;
+        } catch (IOException e) {
+            System.err.println("IO error: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+            return false;
+        } finally {
+            closeConnection();
         }
     }
 
@@ -223,7 +241,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             if (responseParts[0].equals("VALUE")) {
                 return handleValueResponse(reader, Integer.parseInt(responseParts[1]));
             } else {
-                return handleNearestNodes(hashedKeyString, keyMessage);
+                return handleNearestNodes(hashedKeyString, keyMessage, "GET?");
             }
         } catch (UnknownHostException e) {
             System.err.println("Unknown host: " + e.getMessage());
@@ -239,7 +257,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
     }
 
-    private String handleNearestNodes(String hashedKeyString, String keyMessage) throws IOException {
+    private String handleNearestNodes(String hashedKeyString, String keyMessage, String operation) throws IOException {
         writer.write("NEAREST? " + hashedKeyString + "\n");
         writer.flush();
 
@@ -273,6 +291,45 @@ public class TemporaryNode implements TemporaryNodeInterface {
         }
 
         // Attempt to retrieve the value from nearest nodes
+        if(operation.equals("GET?")){
+            return handleGetNearest(nearestNodesMap, keyMessage);
+        } if(operation.equals("PUT?")) {
+            return handleStoreNearest(nearestNodesMap, keyMessage);
+        }
+        System.out.println("Value not found in any nearest nodes.");
+        return null;
+    }
+
+    private String handleStoreNearest(Map<String, String> nearestNodesMap, String keyMessage) {
+        for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
+            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
+                 BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
+                 Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
+                nodeWriter.write("START 1 " + nodeName + "\n");
+                nodeWriter.flush();
+                System.out.println("Sending START message to nearest node: " + entry.getKey() + ":" + entry.getValue());
+                String nodeResponse = nodeReader.readLine();
+                System.out.println("Response from nearest node: " + nodeResponse);
+                if(nodeResponse.contains("START")) {
+                    nodeWriter.write(keyMessage);  // Adjusted to use hashed key
+                    nodeWriter.flush();
+                    System.out.println("Sending PUT request to nearest node: " + entry.getKey() + ":" + entry.getValue());
+
+                    nodeResponse = nodeReader.readLine();
+                    System.out.println("Response from nearest node: " + nodeResponse);
+                    if (nodeResponse.contains("SUCCESS")) {
+                        return "Message stored successfully.";
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());
+            }
+        }
+        System.out.println("Failed to store message in any nearest nodes.");
+        return null;
+    }
+
+    public String handleGetNearest(Map<String, String> nearestNodesMap, String keyMessage){
         for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
             try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));

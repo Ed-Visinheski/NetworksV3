@@ -179,8 +179,8 @@ public class FullNode implements FullNodeInterface{
                 System.out.println("Message parts 0 : " + parts[0]);
                 switch (parts[0]){
                     case"NOTIFY?":{
-                        String name = parts[1];
-                        String address = parts[2];
+                        String name = reader.readLine();
+                        String address = reader.readLine();
                         if (AddToNetworkMap(name, address)) {
                             writer.write("NOTIFIED\n");
                             writer.flush();

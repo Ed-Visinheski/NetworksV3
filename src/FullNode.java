@@ -108,7 +108,7 @@ public class FullNode implements FullNodeInterface{
                     }
                 });
             });
-        }, 2, 60, TimeUnit.SECONDS); // Delay start for 2 minutes, then repeat every 60 seconds
+        }, 5, 60, TimeUnit.SECONDS);
     }
 
 
@@ -383,7 +383,7 @@ public class FullNode implements FullNodeInterface{
 
 
 
-    private void connectToStartingNode(String startingNodeName,String nodeAddress) {
+    private void connectToStartingNode(String startingNodeName, String nodeAddress) {
         new Thread(() -> {
             String address = nodeAddress.split(":")[0];
             int port = Integer.parseInt(nodeAddress.split(":")[1]);
@@ -392,24 +392,34 @@ public class FullNode implements FullNodeInterface{
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
                 writer.write("START 1 " + this.nodeName + "\n");
                 writer.flush();
+
                 String response;
-                while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed() ) {
-                    if(response.contains("START")){
-                        String[] parts = response.split(" ");
-                        if(parts.length != 3){
+                while ((response = reader.readLine()) != null) {
+                    String responseParts[] = response.split(" ");
+                    if (responseParts[0].equals("END")) {
+                        System.out.println("Received END command, closing connection.");
+                        break; // Exit the loop and close the socket cleanly
+                    }
+
+                    if (responseParts[0].equals("START")) {
+                        if (responseParts.length != 3) {
                             System.out.println("Invalid START message.");
                             writer.write("END Invalid START message\n");
                             writer.flush();
-                            reader.readLine();
-                            socket.close();
-                            reader.close();
-                            writer.close();
-                            return;
+                        } else {
+                            String version = responseParts[1];
+                            System.out.println("Received START message from " + responseParts[2]);
+                            HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
                         }
-                        String version = parts[1];
-                        System.out.println("Received START message from " + parts[2]);
-                        HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
-
+                    } else {
+                        // Handle other types of messages
+                        System.out.println("Received message: " + response);
+                        writer.write("END Invalid message\n");
+                        writer.flush();
+                        reader.readLine(); // Consume the next line
+                        socket.close();
+                        reader.close();
+                        writer.close();
                     }
                 }
             } catch (IOException e) {
@@ -417,6 +427,7 @@ public class FullNode implements FullNodeInterface{
             }
         }).start();
     }
+
 
     private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {

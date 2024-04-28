@@ -378,6 +378,7 @@ public class FullNode implements FullNodeInterface{
 
     private void connectToStartingNode(String startingNodeName, String nodeAddress) {
         new Thread(() -> {
+            HashID hashID = new HashID();
             String address = nodeAddress.split(":")[0];
             int port = Integer.parseInt(nodeAddress.split(":")[1]);
             try (Socket socket = new Socket(address, port);
@@ -398,7 +399,16 @@ public class FullNode implements FullNodeInterface{
                     } else if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
                         // Here you can start handling other command types
+                        writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
+                        writer.flush();
+                        String nearestResponse = reader.readLine();
                         Map<String, String> nodeAddressMap = new HashMap<>();
+                        for(int i = 0; i < Integer.parseInt(nearestResponse.split(" ")[1]); i++){
+                            String nearestNodeName = reader.readLine();
+                            String nearestNodeAddress = reader.readLine();
+                            AddToNetworkMap(nodeName, nodeAddress);
+                            nodeAddressMap.put(nearestNodeName, nearestNodeAddress);
+                        }
                         discoverNetwork(0, startingNodeName, nodeAddress, socket, reader, writer, nodeAddressMap);
                         HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
 
@@ -421,34 +431,30 @@ public class FullNode implements FullNodeInterface{
     private void discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer, Map<String, String> visitedNodes) throws Exception {
         new Thread(() ->{
             try {
-                HashID hashID = new HashID();
-                for (Map.Entry<String, String> visitedNode : visitedNodes.entrySet()) {
-                    String visitedNodeName = visitedNode.getKey();
-                    String visitedNodeAddress = visitedNode.getValue();
-                    byte[] visitedNodeHash = hashID.computeHashID(visitedNodeName + "\n");
-                    int visitedNodeDistance = hashID.calculateDistance(visitedNodeHash, hashID.computeHashID(currentNodeName + "\n"));
-                    if (visitedNodeDistance < currentDistance) {
-                        addNodeToNetworkMap(visitedNodeDistance, visitedNodeName, visitedNodeAddress);
-                        try (Socket visitedSocket = new Socket(visitedNodeAddress.split(":")[0], Integer.parseInt(visitedNodeAddress.split(":")[1]));
-                             BufferedReader visitedReader = new BufferedReader(new InputStreamReader(visitedSocket.getInputStream()));
-                             BufferedWriter visitedWriter = new BufferedWriter(new OutputStreamWriter(visitedSocket.getOutputStream()))) {
-                            visitedWriter.write("START 1" + nodeName + "\n");
-                            visitedWriter.flush();
-                            visitedReader.readLine();
-                            visitedWriter.write("NOTIFY?\n" + currentNodeName + "\n" + currentNodeAddress + "\n");
-                            visitedWriter.flush();
-                            String response = visitedReader.readLine();
-                            if (!"NOTIFIED".equals(response)) {
-                                System.out.println("Failed to notify " + visitedNodeAddress);
-                            }
-                            System.out.println("Notified " + visitedNodeAddress);
-                            writer.write("END Notified " + visitedNodeName + "\n");
-                            writer.flush();
-                        } catch (IOException e) {
-                            System.out.println("Could not connect or communicate with " + visitedNodeAddress + ": " + e.getMessage());
+                //Use Add to network map to add the current node to the network map
+                for(String node : visitedNodes.keySet()){
+                    try{Socket newSocket = new Socket(visitedNodes.get(node).split(":")[0], Integer.parseInt(visitedNodes.get(node).split(":")[1]));
+                        BufferedReader newReader = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
+                        BufferedWriter newWriter = new BufferedWriter(new OutputStreamWriter(newSocket.getOutputStream()));
+                        //Send a notify message to the current node
+                        writer.write("START 1 " + nodeName + "\n");
+                        writer.flush();
+                        String response = reader.readLine();
+                        writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
+                        writer.flush();
+                        reader.readLine();
+                        if(response.equals("NOTIFIED")){
+                            System.out.println("Notified " + node);
+                        }
+                        else{
+                            System.out.println("Failed to notify " + node);
                         }
                     }
+                    catch (IOException e){
+                        System.out.println("Error notifying node: " + e.getMessage());
+                    }
                 }
+
             }
             catch (Exception e){
                 System.out.println("Error discovering network: " + e.getMessage());

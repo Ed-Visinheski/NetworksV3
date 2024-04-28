@@ -454,6 +454,9 @@ public class FullNode implements FullNodeInterface{
                         System.out.println("Failed to notify " + visitedNodeAddress);
                         return false;
                     }
+                    System.out.println("Notified " + visitedNodeAddress);
+                    writer.write("END Notified " + visitedNodeName + "\n");
+                    writer.flush();
                 } catch (IOException e) {
                     System.out.println("Could not connect or communicate with " + visitedNodeAddress + ": " + e.getMessage());
                     return false;
@@ -631,6 +634,7 @@ public class FullNode implements FullNodeInterface{
         Map<String, String> nodesAtDistance = networkMap.computeIfAbsent(distance, k -> new HashMap<>());
         if (nodesAtDistance.size() < 3 && !nodesAtDistance.containsKey(nodeName)) {
             nodesAtDistance.put(nodeName, nodeAddress);
+            networkMap.put(distance, nodesAtDistance);
             System.out.println("Added " + nodeName + " at distance " + distance);
         } else {
             System.out.println("Skip adding " + nodeName + " at distance " + distance + " due to limit or existing entry.");

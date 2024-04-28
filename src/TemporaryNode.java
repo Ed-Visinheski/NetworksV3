@@ -149,6 +149,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
 
             System.out.println("Response: " + response);
             if (response.equals("SUCCESS")) {
+                writer.write("END Message Stored\n");
+                writer.flush();
+                closeConnection();
                 return true;
             } else {
                 return handleNearestNodes(hashedKeyString, keyMessage, "PUT?") != null;
@@ -163,7 +166,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.err.println("Unexpected error: " + e.getMessage());
             return false;
         } finally {
-            closeConnection();
+            if(socket != null && !socket.isClosed()){
+                closeConnection();
+            }
         }
     }
 
@@ -233,6 +238,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
             String response = reader.readLine();
             if (response == null) {
                 System.out.println("Response from server is null, possibly connection was closed.");
+                writer.write("END Connection Closed\n");
+                writer.flush();
+                closeConnection();
                 return null;
             }
 
@@ -264,6 +272,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
         String nearestResponse = reader.readLine();
         if (nearestResponse == null) {
             System.out.println("Nearest node response is null, connection may have been closed.");
+            writer.write("END Connection Closed\n");
+            writer.flush();
+            closeConnection();
             return null;
         }
 
@@ -271,6 +282,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
         String[] nearestParts = nearestResponse.split(" ");
         if (!nearestParts[0].equals("NODES")) {
             System.out.println("Unexpected response type for NEAREST request.");
+            writer.write("END Unexpected Response\n");
+            writer.flush();
+            closeConnection();
             return null;
         }
 
@@ -297,10 +311,13 @@ public class TemporaryNode implements TemporaryNodeInterface {
             return handleStoreNearest(nearestNodesMap, keyMessage);
         }
         System.out.println("Value not found in any nearest nodes.");
+        writer.write("END Value Not Found\n");
+        writer.flush();
+        closeConnection();
         return null;
     }
 
-    private String handleStoreNearest(Map<String, String> nearestNodesMap, String keyMessage) {
+    private String handleStoreNearest(Map<String, String> nearestNodesMap, String keyMessage) throws IOException {
         for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
             try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
@@ -318,14 +335,24 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     nodeResponse = nodeReader.readLine();
                     System.out.println("Response from nearest node: " + nodeResponse);
                     if (nodeResponse.contains("SUCCESS")) {
+                        nodeWriter.write("END Message Stored\n");
+                        nodeWriter.flush();
+                        nodeSocket.close();
+                        nodeReader.close();
+                        nodeWriter.close();
+                        closeConnection();
                         return "Message stored successfully.";
                     }
                 }
             } catch (IOException e) {
                 System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());
+                closeConnection();
             }
         }
         System.out.println("Failed to store message in any nearest nodes.");
+        writer.write("END Failed to Store Message\n");
+        writer.flush();
+        closeConnection();
         return null;
     }
 
@@ -343,7 +370,6 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     nodeWriter.write(keyMessage);  // Adjusted to use hashed key
                     nodeWriter.flush();
                     System.out.println("Sending GET request to nearest node: " + entry.getKey() + ":" + entry.getValue());
-
                     nodeResponse = nodeReader.readLine();
                     System.out.println("Response from nearest node: " + nodeResponse);
                     if (nodeResponse.contains("VALUE")) {
@@ -352,6 +378,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 }
             } catch (IOException e) {
                 System.err.println("Failed to connect or communicate with node: " + entry.getKey() + ":" + entry.getValue());
+                closeConnection();
             }
         }
         System.out.println("Value not found in any nearest nodes.");

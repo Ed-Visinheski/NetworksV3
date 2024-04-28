@@ -440,59 +440,51 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer) throws IOException {
-        Map<Integer, Map<String, String>> contactedNodes = new HashMap<>();
-        // Start by adding the current node to the contacted list
-        contactedNodes.put(currentDistance, new HashMap<>());
-        contactedNodes.get(currentDistance).put(currentNodeName, currentNodeAddress);
-
-        try {
-            String hexName = new HashID().bytesToHex(new HashID().computeHashID(currentNodeName + "\n"));
-            writer.write("NEAREST? " + hexName + "\n");
-            writer.flush();
-
-            String line;
-            boolean discoveryComplete = false;
-
-            while ((line = reader.readLine()) != null && !discoveryComplete) {
-                System.out.println("Discovery response: " + line);
-                if (line.equals("END")) {
-                    break;
-                }
-                if (line.startsWith("NODES")) {
-                    int expectedNodesCount = Integer.parseInt(line.split(" ")[1]);
-                    int processedNodesCount = 0;
-
-                    while (processedNodesCount < expectedNodesCount) {
-                        String nodeName = reader.readLine();
-                        String nodeAddress = reader.readLine();
-                        if (nodeAddress == null || nodeName == null) {
-                            System.out.println("Incomplete node data received.");
-                            break;
-                        }
-
-                        HashID hashID = new HashID();
-                        int distance = hashID.calculateDistance(hashID.computeHashID(this.nodeName + "\n"), hashID.computeHashID(nodeName + "\n"));
-
-                        // Check if this node has already been contacted
-                        if (!contactedNodes.containsKey(distance) || !contactedNodes.get(distance).containsKey(nodeName)) {
-                            contactedNodes.computeIfAbsent(distance, k -> new HashMap<>()).put(nodeName, nodeAddress);
-                            addNodeToNetworkMap(distance, nodeName, nodeAddress);
-                        }
-                        processedNodesCount++;
-
-                        // Check if new nodes are still being found
-                        if (contactedNodes.size() == processedNodesCount) {
-                            discoveryComplete = true; // No new nodes, end discovery
-                        }
-                    }
-                }
-            }
-            return discoveryComplete;
-        } catch (Exception e) {
-            System.out.println("Exception during network discovery: " + e.getMessage());
+    private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
+        HashID hashID = new HashID();
+        byte[] currentNodeHash = hashID.computeHashID(currentNodeName + "\n");
+        Map<String, String> closestNodes = findClosestToKey(currentNodeHash);
+        if (closestNodes == null) {
+            System.out.println("No closest nodes found.");
             return false;
         }
+        for (Map.Entry<String, String> entry : closestNodes.entrySet()) {
+            String node = entry.getKey();
+            String address = entry.getValue();
+            if (node.equals(currentNodeName)) {
+                continue;
+            }
+            try (Socket nodeSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
+                 BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
+                 BufferedWriter nodeWriter = new BufferedWriter(new OutputStreamWriter(nodeSocket.getOutputStream()))){
+                nodeWriter.write("NEAREST? " + hashID.bytesToHex(currentNodeHash) + "\n");
+                nodeWriter.flush();
+                String response = nodeReader.readLine();
+                if (response.equals("NOPE")) {
+                    System.out.println("Failed to get nearest nodes from " + node);
+                    return false;
+                }
+                int nodeCount = Integer.parseInt(response.split(" ")[1]);
+                for (int i = 0; i < nodeCount; i++) {
+                    String nodeName = nodeReader.readLine();
+                    String nodeAddress = nodeReader.readLine();
+                    if (nodeName.equals(currentNodeName)) {
+                        continue;
+                    }
+                    int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), currentNodeHash);
+                    if (networkMap.containsKey(distance)) {
+                        networkMap.get(distance).put(nodeName, nodeAddress);
+                    } else {
+                        networkMap.put(distance, new HashMap<>());
+                        networkMap.get(distance).put(nodeName, nodeAddress);
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Error communicating with node " + node + ": " + e.getMessage());
+                return false;
+            }
+        }
+        return true;
     }
 
 

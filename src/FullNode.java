@@ -96,27 +96,36 @@ public class FullNode implements FullNodeInterface{
                     // Skip the heartbeat check for the node's own address
                     if (!nodeAddress.equals(this.address)) {
                         executorService.submit(() -> {
-                            if (!sendEchoRequest(nodeName, nodeAddress)) {
+                            if (!sendEchoRequestWithRetries(nodeName, nodeAddress, 3)) { // 3 retries
                                 System.out.println("No response from node " + nodeName + " at " + nodeAddress + ". Removing from network map.");
-                                // Safe removal
                                 nodes.remove(nodeName, nodeAddress);
                             }
                         });
-                    }
-                    else {
+                    } else {
                         System.out.println("Skipping heartbeat check for own address: " + nodeAddress);
                     }
                 });
             });
-        }, 50, 60, TimeUnit.SECONDS);
+        }, 50, 60, TimeUnit.SECONDS); // Delay start by 50 seconds, repeat every 60 seconds
     }
 
+    private boolean sendEchoRequestWithRetries(String nodeName, String nodeAddress, int retries) {
+        int attempt = 0;
+        while (attempt < retries) {
+            if (sendEchoRequest(nodeName, nodeAddress)) {
+                return true;
+            }
+            attempt++;
+            try {
+                Thread.sleep(2000); // Wait 2 seconds before retrying
+            } catch (InterruptedException ignored) {}
+        }
+        return false;
+    }
 
     private boolean sendEchoRequest(String nodeName, String nodeAddress) {
         try (Socket socket = new Socket()) {
-            String address = nodeAddress.split(":")[0];
-            int port = Integer.parseInt(nodeAddress.split(":")[1]);
-            socket.connect(new InetSocketAddress(address, port), 5000); // Timeout after 5 seconds
+            socket.connect(new InetSocketAddress(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1])), 10000); // Timeout after 10 seconds
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
                 writer.write("ECHO?\n");
@@ -129,6 +138,7 @@ public class FullNode implements FullNodeInterface{
             return false;
         }
     }
+
 
 
     public void stop() {

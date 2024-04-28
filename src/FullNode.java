@@ -395,31 +395,21 @@ public class FullNode implements FullNodeInterface{
 
                 String response;
                 while ((response = reader.readLine()) != null) {
-                    String responseParts[] = response.split(" ");
-                    if (responseParts[0].equals("END")) {
+                    String[] parts = response.split(" ");
+                    if ("END".equals(parts[0])) {
                         System.out.println("Received END command, closing connection.");
-                        break; // Exit the loop and close the socket cleanly
+                        break;
                     }
 
-                    if (responseParts[0].equals("START")) {
-                        if (responseParts.length != 3) {
-                            System.out.println("Invalid START message.");
-                            writer.write("END Invalid START message\n");
-                            writer.flush();
-                        } else {
-                            String version = responseParts[1];
-                            System.out.println("Received START message from " + responseParts[2]);
-                            HandleServer(reader, writer, startingNodeName, nodeAddress);
-                        }
+                    if ("START".equals(parts[0]) && parts.length == 3) {
+                        System.out.println("Received START message from " + parts[2]);
+                        HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                        break; // Assume HandleServer takes over the session handling
                     } else {
-                        // Handle other types of messages
-                        System.out.println("Received message: " + response);
+                        System.out.println("Received invalid message: " + response);
                         writer.write("END Invalid message\n");
                         writer.flush();
-                        reader.readLine(); // Consume the next line
-                        socket.close();
-                        reader.close();
-                        writer.close();
+                        break; // Close connection on protocol error
                     }
                 }
             } catch (IOException e) {
@@ -429,7 +419,7 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private void HandleServer(BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
+    private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {
             HashID hashID = new HashID();
             writer.write("NOTIFY " + nodeName + " " + address + "\n");
@@ -576,6 +566,11 @@ public class FullNode implements FullNodeInterface{
                 String command = scanner.nextLine();
                 writer.write(command + "\n");
                 writer.flush();
+                if("END".contains(command)){
+                    reader.readLine();
+                    socket.close();
+                    return;
+                }
             }
         } catch (IOException e) {
             System.out.println("Error handling server: " + e.getMessage());

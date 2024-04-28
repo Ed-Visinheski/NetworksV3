@@ -410,16 +410,13 @@ public class FullNode implements FullNodeInterface{
                 String response;
                 while ((response = reader.readLine()) != null) {
                     String[] parts = response.split(" ");
-                    if ("END".equals(parts[0])) {
-                        System.out.println("Received END command, closing connection.");
-                        break;
-                    }
-
                     if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
                         HashID hashID = new HashID();
                         int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
                         addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
+                        writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
+                        writer.flush();
                         if (discoverNetwork(distance, startingNodeName, nodeAddress ,socket, reader, writer)) {
                             HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
                         }
@@ -468,10 +465,6 @@ public class FullNode implements FullNodeInterface{
                 nodeWriter.write("NEAREST? " + hashID.bytesToHex(currentNodeHash) + "\n");
                 nodeWriter.flush();
                 String response = nodeReader.readLine();
-                if (response.equals("NOPE")) {
-                    System.out.println("Failed to get nearest nodes from " + node);
-                    return false;
-                }
                 int nodeCount = Integer.parseInt(response.split(" ")[1]);
                 for (int i = 0; i < nodeCount; i++) {
                     String nodeName = nodeReader.readLine();

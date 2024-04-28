@@ -631,14 +631,7 @@ public class FullNode implements FullNodeInterface{
         }
     }
     private void addNodeToNetworkMap(int distance, String nodeName, String nodeAddress) {
-        Map<String, String> nodesAtDistance = networkMap.computeIfAbsent(distance, k -> new HashMap<>());
-        if (nodesAtDistance.size() < 3 && !nodesAtDistance.containsKey(nodeName)) {
-            nodesAtDistance.put(nodeName, nodeAddress);
-            networkMap.put(distance, nodesAtDistance);
-            System.out.println("Added " + nodeName + " at distance " + distance);
-        } else {
-            System.out.println("Skip adding " + nodeName + " at distance " + distance + " due to limit or existing entry.");
-        }
+        networkMap.computeIfAbsent(distance, k -> new HashMap<>()).put(nodeName, nodeAddress);
     }
 
     public static void main(String[] args) {

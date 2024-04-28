@@ -433,14 +433,18 @@ public class FullNode implements FullNodeInterface{
             try {
                 //Use Add to network map to add the current node to the network map
                 for(String node : visitedNodes.keySet()){
-                    try{Socket newSocket = new Socket(visitedNodes.get(node).split(":")[0], Integer.parseInt(visitedNodes.get(node).split(":")[1]));
+                    String address = visitedNodes.get(node);
+                    String[] addressParts = address.split(":");
+                    try{Socket newSocket = new Socket(addressParts[0], Integer.parseInt(addressParts[1]));
                         BufferedReader newReader = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
                         BufferedWriter newWriter = new BufferedWriter(new OutputStreamWriter(newSocket.getOutputStream()));
                         //Send a notify message to the current node
+                        System.out.println("Start message to " + node);
                         writer.write("START 1 " + nodeName + "\n");
                         writer.flush();
                         String response = reader.readLine();
-                        writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
+                        System.out.println("Response from node: " + response);
+                        writer.write("NOTIFY?\n" + nodeName + "\n" + this.address + "\n");
                         writer.flush();
                         reader.readLine();
                         if(response.equals("NOTIFIED")){

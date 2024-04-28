@@ -409,7 +409,7 @@ public class FullNode implements FullNodeInterface{
                             AddToNetworkMap(nodeName, nodeAddress);
                             nodeAddressMap.put(nearestNodeName, nearestNodeAddress);
                         }
-                        discoverNetwork(0, startingNodeName, nodeAddress, socket, reader, writer, nodeAddressMap);
+                        discoverNetwork(nodeAddressMap);
                         HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
 
                     } else {
@@ -428,7 +428,7 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private void discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer, Map<String, String> visitedNodes) throws Exception {
+    private void discoverNetwork(Map<String, String> visitedNodes) throws Exception {
         new Thread(() ->{
             try {
                 //Use Add to network map to add the current node to the network map
@@ -440,13 +440,13 @@ public class FullNode implements FullNodeInterface{
                         BufferedWriter newWriter = new BufferedWriter(new OutputStreamWriter(newSocket.getOutputStream()));
                         //Send a notify message to the current node
                         System.out.println("Start message to " + node);
-                        writer.write("START 1 " + nodeName + "\n");
-                        writer.flush();
-                        String response = reader.readLine();
+                        newWriter.write("START 1 " + nodeName + "\n");
+                        newWriter.flush();
+                        String response = newReader.readLine();
                         System.out.println("Response from node: " + response);
-                        writer.write("NOTIFY?\n" + nodeName + "\n" + this.address + "\n");
-                        writer.flush();
-                        reader.readLine();
+                        newWriter.write("NOTIFY?\n" + nodeName + "\n" + this.address + "\n");
+                        newWriter.flush();
+                        newReader.readLine();
                         if(response.equals("NOTIFIED")){
                             System.out.println("Notified " + node);
                         }

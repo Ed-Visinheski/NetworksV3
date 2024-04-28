@@ -420,14 +420,15 @@ public class FullNode implements FullNodeInterface{
                         HashID hashID = new HashID();
                         int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
                         addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
-                        discoverNetwork(distance, startingNodeName, socket, reader, writer);
-                        HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                        if (discoverNetwork(distance, startingNodeName, socket, reader, writer)) {
+                            HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                        }
                         break;
                     } else {
                         System.out.println("Received invalid message: " + response);
                         writer.write("END Invalid message\n");
                         writer.flush();
-                        break; // Close connection on protocol error
+                        break;
                     }
                 }
             } catch (IOException e) {
@@ -439,8 +440,7 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private void discoverNetwork(int currentDistance, String currentNodeName, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
-        // Send a NEAREST? request to the connected node
+    private boolean discoverNetwork(int currentDistance, String currentNodeName, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
         writer.write("NEAREST?\n");
         writer.flush();
 
@@ -457,9 +457,12 @@ public class FullNode implements FullNodeInterface{
 
                     addNodeToNetworkMap(cumulativeDistance, nodeName, nodeAddress);
                 }
+                return true; // Discovery completed successfully
             }
         }
+        return false; // Discovery process did not complete successfully
     }
+
 
     private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {

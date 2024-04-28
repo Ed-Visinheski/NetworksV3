@@ -170,17 +170,19 @@ public class FullNode implements FullNodeInterface{
             }
             String version = parts[1];
             System.out.println("Received START message from " + parts[2]);
+            String currentNodeName = parts[2];
             while (socket != null && !socket.isClosed()) {
                 String command = reader.readLine();
                 if (command == null) {
                     break;
                 }
                 parts = command.split(" ");
-                System.out.println("Received message from " + startingAddress + ": " + command);
+                System.out.println("Received message from " + currentNodeName+ ": " + command);
                 switch (parts[0]){
                     case"NOTIFY?":{
                         String name = reader.readLine();
                         String address = reader.readLine();
+                        System.out.println("Received NOTIFY? message from " + name + "\n" + command);
                         if (AddToNetworkMap(name, address)) {
                             writer.write("NOTIFIED\n");
                             writer.flush();
@@ -188,7 +190,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case"PUT?": {
-                        System.out.println("Received PUT? message from " + startingAddress + "\n" + command);
+                        System.out.println("Received PUT? message from " + currentNodeName + "\n" + command);
                         int keyLines = Integer.parseInt(parts[1]);
                         int valueLines = Integer.parseInt(parts[2]);
                         String key = "";
@@ -236,7 +238,7 @@ public class FullNode implements FullNodeInterface{
                         break;
                     }
                     case "END": {
-                        System.out.println("END message received from " + startingAddress);
+                        System.out.println("END message received from " + currentNodeName);
                         writer.write("END Client Ended Communication\n");
                         writer.flush();
                         try {

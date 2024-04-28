@@ -404,7 +404,7 @@ public class FullNode implements FullNodeInterface{
                     if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
                         HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
-                        break; // Assume HandleServer takes over the session handling
+                        break;
                     } else {
                         System.out.println("Received invalid message: " + response);
                         writer.write("END Invalid message\n");
@@ -425,6 +425,7 @@ public class FullNode implements FullNodeInterface{
             writer.write("NOTIFY " + nodeName + " " + address + "\n");
             writer.flush();
             String response;
+            System.out.println("Notifying " + nodeAddress);
             while ((response = reader.readLine()) != null && !response.equals("END") && !socket.isClosed()) {
                 String[] parts = response.split(" ");
                 switch (parts[0]) {

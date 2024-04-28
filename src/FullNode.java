@@ -459,6 +459,12 @@ public class FullNode implements FullNodeInterface{
             try (Socket nodeSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
                  BufferedWriter nodeWriter = new BufferedWriter(new OutputStreamWriter(nodeSocket.getOutputStream()))) {
+                nodeWriter.write("START 1 " + currentNodeName + "\n");
+                nodeWriter.flush();
+                if(!reader.readLine().equals("START 1 " + node)){
+                    System.out.println("Failed to start communication with " + node);
+                    continue;
+                }
                 nodeWriter.write("NEAREST? " + hashID.bytesToHex(currentNodeHash) + "\n");
                 nodeWriter.flush();
                 String response = nodeReader.readLine();

@@ -2,9 +2,9 @@
 // Coursework 2023/2024
 //
 // Submission by
-// YOUR_NAME_GOES_HERE
-// YOUR_STUDENT_ID_NUMBER_GOES_HERE
-// YOUR_EMAIL_GOES_HERE
+// Eduardo Cook Visinheski
+// 220057799
+// eduardo.cook-visinheski@city.ac.uk
 
 
 import java.io.*;
@@ -60,9 +60,6 @@ public class FullNode implements FullNodeInterface{
 
     public void handleIncomingConnections(String startingNodeName, String startingNodeAddress) {
         try {
-            HashID hashID = new HashID();
-            int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
-            networkMap.computeIfAbsent(distance, k -> new HashMap<>()).put(startingNodeName, startingNodeAddress);
             Thread thread = new Thread(() -> {
                 while (true) {
                     try {
@@ -420,6 +417,10 @@ public class FullNode implements FullNodeInterface{
 
                     if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
+                        HashID hashID = new HashID();
+                        int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
+                        addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
+                        discoverNetwork(distance, startingNodeName, socket, reader, writer);
                         HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
                         break;
                     } else {
@@ -431,10 +432,34 @@ public class FullNode implements FullNodeInterface{
                 }
             } catch (IOException e) {
                 System.out.println("Could not connect or communicate with " + nodeAddress + ": " + e.getMessage());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }).start();
     }
 
+
+    private void discoverNetwork(int currentDistance, String currentNodeName, Socket socket, BufferedReader reader, BufferedWriter writer) throws Exception {
+        // Send a NEAREST? request to the connected node
+        writer.write("NEAREST?\n");
+        writer.flush();
+
+        String line;
+        while ((line = reader.readLine()) != null && !line.equals("END")) {
+            if (line.startsWith("NODES")) {
+                int count = Integer.parseInt(line.split(" ")[1]);
+                for (int i = 0; i < count; i++) {
+                    String nodeName = reader.readLine();
+                    String nodeAddress = reader.readLine();
+                    HashID hashID = new HashID();
+                    int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(currentNodeName + "\n"));
+                    int cumulativeDistance = currentDistance + distance;
+
+                    addNodeToNetworkMap(cumulativeDistance, nodeName, nodeAddress);
+                }
+            }
+        }
+    }
 
     private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {
@@ -597,6 +622,15 @@ public class FullNode implements FullNodeInterface{
             System.out.println("Error handling server: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+    private void addNodeToNetworkMap(int distance, String nodeName, String nodeAddress) {
+        Map<String, String> nodesAtDistance = networkMap.computeIfAbsent(distance, k -> new HashMap<>());
+        if (nodesAtDistance.size() < 3 && !nodesAtDistance.containsKey(nodeName)) {
+            nodesAtDistance.put(nodeName, nodeAddress);
+            System.out.println("Added " + nodeName + " at distance " + distance);
+        } else {
+            System.out.println("Skip adding " + nodeName + " at distance " + distance + " due to limit or existing entry.");
         }
     }
 

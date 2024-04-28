@@ -168,6 +168,7 @@ public class FullNode implements FullNodeInterface{
                     }
                     case "END": {
                         System.out.println("Received END message from Client");
+                        writer.write("END Client Ended Communication\n");
                         socket.close();
                         break;
                     }
@@ -194,7 +195,7 @@ public class FullNode implements FullNodeInterface{
                             writer.write("NOPE\n");
                             writer.flush();
                         }
-
+                        break;
                     }
                     default: {
                         System.out.println("Invalid message received.");
@@ -204,6 +205,7 @@ public class FullNode implements FullNodeInterface{
                     }
                 }
             }
+            socket.close();
     } catch (IOException e) {
             System.out.println("Error handling client.");
         } catch (Exception e) {

@@ -217,6 +217,10 @@ public class TemporaryNode implements TemporaryNodeInterface {
         try {
             if (socket == null || socket.isClosed() || !socket.isConnected()) {
                 System.err.println("Socket is closed or not connected.");
+                writer.write("END Connection Closed\n");
+                writer.flush();
+                reader.readLine();
+                closeConnection();
                 return null;  // Consider reconnecting here
             }
 
@@ -240,6 +244,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 System.out.println("Response from server is null, possibly connection was closed.");
                 writer.write("END Connection Closed\n");
                 writer.flush();
+                reader.readLine();
                 closeConnection();
                 return null;
             }
@@ -261,7 +266,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.err.println("Unexpected error: " + e.getMessage());
             return null;
         } finally {
-            closeConnection();
+            if(socket != null && !socket.isClosed()){
+                closeConnection();
+            }
         }
     }
 
@@ -274,6 +281,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.out.println("Nearest node response is null, connection may have been closed.");
             writer.write("END Connection Closed\n");
             writer.flush();
+            reader.readLine();
             closeConnection();
             return null;
         }
@@ -284,6 +292,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             System.out.println("Unexpected response type for NEAREST request.");
             writer.write("END Unexpected Response\n");
             writer.flush();
+            reader.readLine();
             closeConnection();
             return null;
         }
@@ -313,6 +322,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         System.out.println("Value not found in any nearest nodes.");
         writer.write("END Value Not Found\n");
         writer.flush();
+        reader.readLine();
         closeConnection();
         return null;
     }
@@ -337,6 +347,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                     if (nodeResponse.contains("SUCCESS")) {
                         nodeWriter.write("END Message Stored\n");
                         nodeWriter.flush();
+                        reader.readLine();
                         nodeSocket.close();
                         nodeReader.close();
                         nodeWriter.close();
@@ -352,6 +363,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
         System.out.println("Failed to store message in any nearest nodes.");
         writer.write("END Failed to Store Message\n");
         writer.flush();
+        reader.readLine();
         closeConnection();
         return null;
     }

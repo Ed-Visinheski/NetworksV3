@@ -409,6 +409,12 @@ public class FullNode implements FullNodeInterface{
                                 HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
                             }
                         }
+                        else{
+                            System.out.println("Received invalid message: " + response);
+                            writer.write("END Invalid message\n");
+                            writer.flush();
+                            break;
+                        }
                         break;
                     } else {
                         System.out.println("Received invalid message: " + response);

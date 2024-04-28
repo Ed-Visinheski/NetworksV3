@@ -184,6 +184,7 @@ public class FullNode implements FullNodeInterface{
                         String address = reader.readLine();
                         System.out.println("Received NOTIFY? message from " + name + "\n" + command);
                         if (AddToNetworkMap(name, address)) {
+                            System.out.println("Added " + name + " to network map.");
                             writer.write("NOTIFIED\n");
                             writer.flush();
                         }
@@ -263,7 +264,7 @@ public class FullNode implements FullNodeInterface{
                             for(String node : closestNodes.keySet()){
                                 nearestResponce = (node + "\n" + closestNodes.get(node) + "\n");
                             }
-                            System.out.println("Sending NEAREST? response to " + startingAddress + "\n" + nearestResponce);
+                            System.out.println("Sending NEAREST? response to " + currentNodeName + "\n" + nearestResponce);
                             writer.write(nearestResponce);
                             writer.flush();
                         }

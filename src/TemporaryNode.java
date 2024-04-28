@@ -297,7 +297,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
             return null;
         }
 
-        Map<String, String> nearestNodesMap = new HashMap<>();
+        Map<String, Map<String, String>> nearestNodesMap = new HashMap<>();
         int nearestLines = Integer.parseInt(nearestParts[1]);
         for (int i = 0; i < nearestLines; i++) {
             String nodeDetails = reader.readLine();
@@ -310,7 +310,7 @@ public class TemporaryNode implements TemporaryNodeInterface {
                 System.err.println("Invalid node address format.");
                 continue;
             }
-            nearestNodesMap.put(nodeData[0], nodeData[1]);
+            nearestNodesMap.put(nodeDetails, Map.of(nodeData[0], nodeData[1]));
         }
 
         // Attempt to retrieve the value from nearest nodes
@@ -327,9 +327,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return null;
     }
 
-    private String handleStoreNearest(Map<String, String> nearestNodesMap, String keyMessage) throws IOException {
-        for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
-            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
+    private String handleStoreNearest(Map<String, Map<String, String>> nearestNodesMap, String keyMessage) throws IOException {
+        for (Map.Entry<String, Map<String, String>> entry : nearestNodesMap.entrySet()) {
+            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue().keySet().iterator().next()));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
                  Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
                 nodeWriter.write("START 1 " + nodeName + "\n");
@@ -368,9 +368,9 @@ public class TemporaryNode implements TemporaryNodeInterface {
         return null;
     }
 
-    public String handleGetNearest(Map<String, String> nearestNodesMap, String keyMessage){
-        for (Map.Entry<String, String> entry : nearestNodesMap.entrySet()) {
-            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue()));
+    public String handleGetNearest(Map<String, Map<String, String>> nearestNodesMap, String keyMessage){
+        for(Map.Entry<String, Map<String, String>> entry : nearestNodesMap.entrySet()){
+            try (Socket nodeSocket = new Socket(entry.getKey(), Integer.parseInt(entry.getValue().keySet().iterator().next()));
                  BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
                  Writer nodeWriter = new OutputStreamWriter(nodeSocket.getOutputStream())) {
                 nodeWriter.write("START 1 " + nodeName + "\n");

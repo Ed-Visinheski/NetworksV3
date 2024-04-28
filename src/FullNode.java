@@ -409,7 +409,7 @@ public class FullNode implements FullNodeInterface{
                         } else {
                             String version = responseParts[1];
                             System.out.println("Received START message from " + responseParts[2]);
-                            HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
+                            HandleServer(reader, writer, startingNodeName, nodeAddress);
                         }
                     } else {
                         // Handle other types of messages
@@ -429,7 +429,7 @@ public class FullNode implements FullNodeInterface{
     }
 
 
-    private void HandleServer(Socket socket, BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
+    private void HandleServer(BufferedReader reader, BufferedWriter writer, String startingNodeName, String nodeAddress) {
         try {
             HashID hashID = new HashID();
             writer.write("NOTIFY " + nodeName + " " + address + "\n");
@@ -479,7 +479,8 @@ public class FullNode implements FullNodeInterface{
                     case "ECHO?": {
                         writer.write("OHCE\n");
                         writer.flush();
-                        break;
+                        reader.readLine();
+                        return;
                     }
                     case "NOFITY?": {
                         String name = reader.readLine();

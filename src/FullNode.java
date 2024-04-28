@@ -383,44 +383,34 @@ public class FullNode implements FullNodeInterface{
             try (Socket socket = new Socket(address, port);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
+                // Send initial START message
                 writer.write("START 1 " + this.nodeName + "\n");
                 writer.flush();
 
+                // Await response and process further messages
                 String response;
                 while ((response = reader.readLine()) != null) {
+                    System.out.println("Received: " + response);
                     String[] parts = response.split(" ");
-                    if ("START".equals(parts[0]) && parts.length == 3) {
+                    if ("END".equals(parts[0])) {
+                        System.out.println("Received END command, closing connection.");
+                        break;
+                    } else if ("START".equals(parts[0]) && parts.length == 3) {
                         System.out.println("Received START message from " + parts[2]);
-                        HashID hashID = new HashID();
-                        int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
-                        addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
-                        writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
-                        writer.flush();
-                        response = reader.readLine();
-                        if (response.startsWith("NODES")) {
-                            int nodeCount = Integer.parseInt(response.split(" ")[1]);
-                            Map<String, String> visitedNodes = new HashMap<>();
-                            for (int i = 0; i < nodeCount; i++) {
-                                String visitedNodeName = reader.readLine();
-                                String visitedNodeAddress = reader.readLine();
-                                visitedNodes.put(visitedNodeName, visitedNodeAddress);
-                            }
-                            if (discoverNetwork(distance, startingNodeName, nodeAddress ,socket, reader, writer, visitedNodes)) {
-                                HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
-                            }
+                        // Here you can start handling other command types
+                        Map<String, String> nodeAddressMap = new HashMap<>();
+                        if(discoverNetwork(Integer.parseInt(parts[1]), parts[2], nodeAddress, socket, reader, writer,nodeAddressMap )){
+                            HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
                         }
                         else{
-                            System.out.println("Received invalid message: " + response);
-                            writer.write("END Invalid message\n");
+                            writer.write("END Failed to discover network\n");
                             writer.flush();
-                            break;
                         }
-                        break;
                     } else {
                         System.out.println("Received invalid message: " + response);
                         writer.write("END Invalid message\n");
                         writer.flush();
-                        break;
+                        break; // Close connection on protocol error
                     }
                 }
             } catch (IOException e) {

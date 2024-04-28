@@ -26,7 +26,7 @@ public class FullNode implements FullNodeInterface{
 
     private Map<Integer, Map<String, String>> networkMap = new HashMap<>();
     // Map for the Key and the value
-    private Map<String, String> keyValueMap = new HashMap<>();
+    private Map<Integer, Map<String,String>>keyValueMap = new HashMap<>();
     private ServerSocket serverSocket;
     private Socket socket;
     private String nodeName;
@@ -41,6 +41,8 @@ public class FullNode implements FullNodeInterface{
             this.nodeName = "eduardo.cook-visinheski@city.ac.uk:FullNode," + random.nextInt(10000);
             serverSocket = new ServerSocket();
             serverSocket.bind(new InetSocketAddress(ipAddress, portNumber));
+            networkMap.put(0, new HashMap<>());
+            networkMap.get(0).put(nodeName, ipAddress + ":" + portNumber);
             System.out.println("FullNode listening on " + ipAddress + ":" + portNumber);
             return true;
         } catch (IOException e) {
@@ -126,33 +128,31 @@ public class FullNode implements FullNodeInterface{
                         }
                         System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
-                        if(!networkMap.isEmpty()) {
-                            if (calculateStoreDistance(keyHashID)) {
-                                keyValueMap.put(key, value);
-                                writer.write("SUCCESS\n");
-                            } else {
-                                writer.write("FAILED\n");
-                            }
+                        if(!checkIfCloserNodesExist(keyHashID)){
+                            keyValueMap.put(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName)), new HashMap<>());
+                            keyValueMap.get(hashID.calculateDistance(keyHashID, hashID.computeHashID(nodeName))).put(key, value);
+                            writer.write("SUCCESS\n");
                         }
                         else{
-                            keyValueMap.put(key, value);
-                            writer.write("SUCCESS\n");
+                            writer.write("NOPE\n");
                         }
                         writer.flush();
                         break;
                     }
                     case "GET?": {
+                        HashID hasher = new HashID();
                         int keyLines = Integer.parseInt(parts[1]);
                         String keyToGet = "";
                         for (int i = 0; i < keyLines; i++) {
                             keyToGet += reader.readLine() + "\n";
                         }
-                        if (keyValueMap.containsKey(keyToGet)) {
-                            String[] valueSlit = keyValueMap.get(keyToGet).split("\n");
+                        int distance = hasher.calculateDistance(hasher.computeHashID(keyToGet), hasher.computeHashID(nodeName));
+                        if (keyValueMap.get(distance).containsKey(keyToGet)) {
+                            String valueSlit[] = keyValueMap.get(distance).get(keyToGet).split("\n");
                             writer.write("VALUE " + valueSlit.length + "\n" + keyValueMap.get(keyToGet));
                             writer.flush();
                         } else {
-                            writer.write(getFromClosestNode(hashID.computeHashID(keyToGet)));
+                            writer.write("NOPE\n");
                             writer.flush();
                         }
                         break;
@@ -167,14 +167,23 @@ public class FullNode implements FullNodeInterface{
                         writer.flush();
                         break;
                     }
-                    case "NEAREST?":{
-                        byte[] keyHashID = hashID.computeHashID(parts[1]);
+                    //NAREST? <HashID>
+                    case "NEAREST?": {
+                        String hexHashID = parts[1];
+                        byte[] keyHashID = hashID.hexStringToByteArray(hexHashID);
                         Map<String, String> closestNodes = findClosestToKey(keyHashID);
-                        for (String node : closestNodes.keySet()) {
-                            writer.write("NEAREST! " + node + " " + closestNodes.get(node) + "\n");
+                        if(closestNodes != null){
+                            writer.write("NODES " + closestNodes.size() + "\n");
+                            for(String node : closestNodes.keySet()){
+                                writer.write(node + "\n" + closestNodes.get(node) + "\n");
+                            }
                             writer.flush();
                         }
-                        break;
+                        else{
+                            writer.write("NOPE\n");
+                            writer.flush();
+                        }
+
                     }
                     default: {
                         System.out.println("Invalid message received.");
@@ -192,60 +201,43 @@ public class FullNode implements FullNodeInterface{
 
     }
 
-    public boolean calculateStoreDistance(byte[] keyHashID) {
-        try{
-            if(findClosestToKey(keyHashID).size() == 3){
-                return false;
-            }
-            HashID hasher = new HashID();
-            int networkSize = networkMap.size();
-            int portion = 256 / networkSize;
-            int minDistance = 256;
-            for (int distance : networkMap.keySet()) {
-                if (distance < minDistance) {
-                    Map<String, String> nodes = networkMap.get(distance);
-                    for (String node : nodes.keySet()) {
-                        byte[] nodeHashID = hasher.computeHashID(node);
-                        distance = hasher.calculateDistance(nodeHashID, keyHashID);
-                        if (distance < minDistance) {
-                            minDistance = distance;
-                        }
-                    }
-                }
-            }
-            return minDistance < portion;
-        } catch (Exception e) {
-            System.out.println("Error calculating store distance.");
+    public boolean checkIfCloserNodesExist(byte[] keyHashID) throws Exception {
+        if(networkMap.isEmpty()){
             return false;
         }
+        else{
+            HashID hashID = new HashID();
+            int distance = hashID.calculateDistance(hashID.computeHashID(currentNodeName), keyHashID);
+            //Checks to see if there are at least 3 nodes in the network that are closer to the key's hashID
+            //than the current node
+            if(networkMap.containsKey(distance)){
+                Map<String, String> nodes = networkMap.get(distance);
+                if(nodes.size() >= 3){
+                    return true;
+                }
+                else{
+                    return false;
+                }
+            }
+            else{
+                return false;
+            }
+        }
     }
+
 
     public void AddToNetworkMap(String name, String address) {
         try {
             HashID hasher = new HashID();
             byte[] nodeHashID = hasher.computeHashID(name);
-            int distance = hasher.calculateDistance(nodeHashID, hasher.computeHashID(currentNodeName));
+            int distance = hasher.calculateDistance(nodeHashID, hasher.computeHashID(nodeName));
             if (networkMap.containsKey(distance)) {
                 Map<String, String> nodes = networkMap.get(distance);
                 if (nodes.size() < 3) {
                     nodes.put(name, address);
-                } else {
-                    // Find the node with the highest distance
-                    int maxDistance = 0;
-                    String maxNode = "";
-                    for (String node : nodes.keySet()) {
-                        int nodeDistance = hasher.calculateDistance(nodeHashID, hasher.computeHashID(node));
-                        if (nodeDistance > maxDistance) {
-                            maxDistance = nodeDistance;
-                            maxNode = node;
-                        }
-                    }
-                    if (maxDistance > distance) {
-                        nodes.remove(maxNode);
-                        nodes.put(name, address);
-                    }
                 }
-            } else {
+            }
+            else {
                 Map<String, String> nodes = new HashMap<>();
                 nodes.put(name, address);
                 networkMap.put(distance, nodes);
@@ -258,74 +250,47 @@ public class FullNode implements FullNodeInterface{
     //Find the 3 closest nodes to that the key's hashID's
     //Returns a map of the closest nodes
 
-    public Map<String, String> findClosestToKey (byte[] keyHashID) {
-        try{
+    public Map<String, String> findClosestToKey(byte[] keyHashID) {
+        try {
             HashID hasher = new HashID();
-            int networkSize = networkMap.size();
-            int portion = 256 / networkSize;
-            Map<String, String> closestNodes = new HashMap<>();
-            for (int i = 0; i < 3; i++) {
-                int minDistance = 256;
-                String minNode = "";
-                for (int distance : networkMap.keySet()) {
-                    if (distance < minDistance) {
-                        Map<String, String> nodes = networkMap.get(distance);
-                        for (String node : nodes.keySet()) {
-                            byte[] nodeHashID = hasher.computeHashID(node);
-                            distance = hasher.calculateDistance(nodeHashID, keyHashID);
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                minNode = node;
-                            }
-                        }
-                    }
-                }
-                closestNodes.put(minNode, networkMap.get(hasher.calculateDistance(hasher.computeHashID(minNode), keyHashID)).get(minNode));
+            if (networkMap.isEmpty()) {
+                System.out.println("The network map is empty.");
+                return null;
             }
-            return closestNodes;
+
+            int keyDistance = hasher.calculateDistance(hasher.computeHashID(nodeName), keyHashID);
+            TreeMap<Integer, Map<String, String>> sortedMap = new TreeMap<>();
+
+            // Collect all nodes with their distances, include the current node explicitly if needed
+            for (Map.Entry<Integer, Map<String, String>> entry : networkMap.entrySet()) {
+                int distance = Math.abs(entry.getKey() - keyDistance);
+                sortedMap.put(distance, entry.getValue());
+            }
+
+            Map<String, String> closestNodes = new HashMap<>();
+            // Ensure the current node is considered if it's one of the closest or if not enough nodes are available
+            if (networkMap.containsKey(0)) {
+                Map<String, String> zeroDistanceNodes = networkMap.get(0);
+                closestNodes.putAll(zeroDistanceNodes);  // Includes current node if present at distance 0
+            }
+
+            for (Map.Entry<Integer, Map<String, String>> entry : sortedMap.entrySet()) {
+                if (closestNodes.size() >= 3) break; // Stop if we already have 3 closest nodes
+                for (Map.Entry<String, String> nodeEntry : entry.getValue().entrySet()) {
+                    closestNodes.put(nodeEntry.getKey(), nodeEntry.getValue());
+                    if (closestNodes.size() >= 3) break;
+                }
+            }
+
+            return closestNodes.isEmpty() ? null : closestNodes;
         } catch (Exception e) {
-            System.out.println("Error finding closest nodes.");
+            System.out.println("Error finding closest nodes: " + e.getMessage());
             return null;
         }
     }
 
-    //Sends GET request to the closest node to the key's hashID
-    public String getFromClosestNode(byte[] keyHashID) {
-        try {
-            Map<String, String> closestNodes = findClosestToKey(keyHashID);
-            for (String node : closestNodes.keySet()) {
-                String[] nodeParts = node.split(":");
-                String nodeAddress = closestNodes.get(node);
-                Socket closestNodeSocket = new Socket(nodeParts[0], Integer.parseInt(nodeParts[1]));
-                BufferedWriter closestNodeWriter = new BufferedWriter(new OutputStreamWriter(closestNodeSocket.getOutputStream()));
-                BufferedReader closestNodeReader = new BufferedReader(new InputStreamReader(closestNodeSocket.getInputStream()));
-                closestNodeWriter.write("GET? " + keyHashID + "\n");
-                closestNodeWriter.flush();
-                String response = closestNodeReader.readLine();
-                String[] responseParts = response.split(" ");
-                if (responseParts[0].equals("VALUE")) {
-                    int valueLines = Integer.parseInt(responseParts[1]);
-                    String value = "";
-                    for (int i = 0; i < valueLines; i++) {
-                        value += closestNodeReader.readLine() + "\n";
-                    }
-                    System.out.println(value);
-                    closestNodeWriter.write("END Message Retrieved Successfully\n");
-                    closestNodeWriter.flush();
-                    closestNodeSocket.close();
-                    return value;
-                } else {
-                    closestNodeWriter.write("END Message Not Found\n");
-                    closestNodeWriter.flush();
-                    closestNodeSocket.close();
-                    return "NOPE";
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error getting from closest node.");
-        }
-        return "NOPE";
-    }
+
+
 
     public void connectToStartingNode(String startingNodeName, String startingNodeAddress) {
         try {

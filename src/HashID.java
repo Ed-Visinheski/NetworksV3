@@ -77,4 +77,12 @@ public class HashID {
 		}
 		return hexString.toString();
 	}
+
+	public byte[] hexStringToByteArray(String hexHashID) {
+		byte[] hashID = new byte[hexHashID.length() / 2];
+		for (int i = 0; i < hexHashID.length(); i += 2) {
+			hashID[i / 2] = (byte) ((Character.digit(hexHashID.charAt(i), 16) << 4) + Character.digit(hexHashID.charAt(i + 1), 16));
+		}
+		return hashID;
+	}
 }

@@ -43,6 +43,7 @@ public class FullNode implements FullNodeInterface{
     public boolean listen(String ipAddress, int portNumber) {
         try{
             //Add Threads to handle multiple connections
+            address = ipAddress + ":" + portNumber;
             this.nodeName = "eduardo.cook-visinheski@city.ac.uk:FullNode," + random.nextInt(10000);
             serverSocket = new ServerSocket();
             serverSocket.bind(new InetSocketAddress(ipAddress, portNumber));
@@ -83,26 +84,33 @@ public class FullNode implements FullNodeInterface{
     private void heartbeatConnections() {
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+        // Delay the start of the heartbeat to give more time for initial connection setup
         scheduler.scheduleAtFixedRate(() -> {
             if (networkMap.isEmpty()) {
                 System.out.println("Network map is empty, no heartbeat checks needed.");
                 return;
             }
-
             System.out.println("Heartbeat check started...");
             networkMap.forEach((distance, nodes) -> {
                 new HashMap<>(nodes).forEach((nodeName, nodeAddress) -> {
-                    executorService.submit(() -> {
-                        if (!sendEchoRequest(nodeName, nodeAddress)) {
-                            System.out.println("No response from node " + nodeName + " at " + nodeAddress + ". Removing from network map.");
-                            // Safe removal
-                            nodes.remove(nodeName, nodeAddress);
-                        }
-                    });
+                    // Skip the heartbeat check for the node's own address
+                    if (!nodeAddress.equals(this.address)) {
+                        executorService.submit(() -> {
+                            if (!sendEchoRequest(nodeName, nodeAddress)) {
+                                System.out.println("No response from node " + nodeName + " at " + nodeAddress + ". Removing from network map.");
+                                // Safe removal
+                                nodes.remove(nodeName, nodeAddress);
+                            }
+                        });
+                    }
+                    else {
+                        System.out.println("Skipping heartbeat check for own address: " + nodeAddress);
+                    }
                 });
             });
-        }, 0, 60, TimeUnit.SECONDS); // Start immediately and repeat every 60 seconds
+        }, 2, 60, TimeUnit.SECONDS); // Delay start for 2 minutes, then repeat every 60 seconds
     }
+
 
     private boolean sendEchoRequest(String nodeName, String nodeAddress) {
         try (Socket socket = new Socket()) {

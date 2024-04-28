@@ -399,97 +399,67 @@ public class FullNode implements FullNodeInterface{
 
     private void connectToStartingNode(String startingNodeName, String nodeAddress) {
         new Thread(() -> {
-            String address = nodeAddress.split(":")[0];
-            int port = Integer.parseInt(nodeAddress.split(":")[1]);
-            try (Socket socket = new Socket(address, port);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))) {
-                writer.write("START 1 " + this.nodeName + "\n");
-                writer.flush();
-
-                String response;
-                while ((response = reader.readLine()) != null) {
-                    String[] parts = response.split(" ");
-                    if ("START".equals(parts[0]) && parts.length == 3) {
-                        System.out.println("Received START message from " + parts[2]);
-                        HashID hashID = new HashID();
-                        int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), hashID.computeHashID(startingNodeName + "\n"));
-                        addNodeToNetworkMap(distance, startingNodeName, nodeAddress);
-                        writer.write("NEAREST? " + hashID.bytesToHex(hashID.computeHashID(nodeName + "\n")) + "\n");
-                        writer.flush();
-                        response = reader.readLine();
-                        if (response.startsWith("NODES")) {
-                            int nodeCount = Integer.parseInt(response.split(" ")[1]);
-                            Set<String> visitedNodes = new HashSet<>();
-                            for (int i = 0; i < nodeCount; i++) {
-                                String visitedNodeName = reader.readLine();
-                                String visitedNodeAddress = reader.readLine();
-                                visitedNodes.add(visitedNodeName);
-                            }
-                            if (discoverNetwork(distance, startingNodeName, nodeAddress ,socket, reader, writer, visitedNodes)) {
-                                HandleServer(socket, reader, writer, startingNodeName, nodeAddress);
-                            }
-                        }
-                        break;
-                    } else {
-                        System.out.println("Received invalid message: " + response);
-                        writer.write("END Invalid message\n");
-                        writer.flush();
-                        break;
+            try {
+                try (Socket socket = new Socket(nodeAddress.split(":")[0], Integer.parseInt(nodeAddress.split(":")[1]));
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()))){
+                    writer.write("START 1 " + nodeName + "\n");
+                    writer.flush();
+                    if(!reader.readLine().equals("START 1 " + startingNodeName)){
+                        System.out.println("Failed to start communication with " + startingNodeName);
+                        return;
                     }
+                    writer.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
+                    writer.flush();
+                    String response = reader.readLine();
+                    if (response.equals("NOTIFIED")) {
+                        System.out.println("Notified " + nodeAddress);
+                    } else {
+                        System.out.println("Failed to notify " + nodeAddress);
+                    }
+                    discoverNetwork(1, nodeName, address, socket, reader, writer, new HashSet<>());
                 }
-            } catch (IOException e) {
-                System.out.println("Could not connect or communicate with " + nodeAddress + ": " + e.getMessage());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                System.out.println("Error connecting to starting node: " + e.getMessage());
             }
         }).start();
     }
 
 
     private boolean discoverNetwork(int currentDistance, String currentNodeName,String currentNodeAddress, Socket socket, BufferedReader reader, BufferedWriter writer, Set<String> visitedNodes) throws Exception {
-        HashID hashID = new HashID();
-        byte[] currentNodeHash = hashID.computeHashID(currentNodeName + "\n");
-        Map<String, String> closestNodes = findClosestToKey(currentNodeHash);
+        if (currentDistance > 3) {
+            return true;
+        }
+        visitedNodes.add(currentNodeName);
+        Map<String, String> closestNodes = findClosestToKey(new HashID().computeHashID(currentNodeName + "\n"));
         if (closestNodes == null) {
-            System.out.println("No closest nodes found.");
             return false;
         }
         for (Map.Entry<String, String> entry : closestNodes.entrySet()) {
-            String node = entry.getKey();
-            String address = entry.getValue();
-            if (node.equals(currentNodeName) || visitedNodes.contains(node)) {
+            if (visitedNodes.contains(entry.getKey())) {
                 continue;
             }
-            visitedNodes.add(node);
-            try (Socket nodeSocket = new Socket(address.split(":")[0], Integer.parseInt(address.split(":")[1]));
-                 BufferedReader nodeReader = new BufferedReader(new InputStreamReader(nodeSocket.getInputStream()));
-                 BufferedWriter nodeWriter = new BufferedWriter(new OutputStreamWriter(nodeSocket.getOutputStream()))) {
-                nodeWriter.write("START 1 " + currentNodeName + "\n");
-                nodeWriter.flush();
-                if(!reader.readLine().equals("START 1 " + node)){
-                    System.out.println("Failed to start communication with " + node);
-                    continue;
+            visitedNodes.add(entry.getKey());
+            try (Socket newSocket = new Socket(entry.getValue().split(":")[0], Integer.parseInt(entry.getValue().split(":")[1]));
+                 BufferedReader newReader = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
+                 BufferedWriter newWriter = new BufferedWriter(new OutputStreamWriter(newSocket.getOutputStream()))){
+                newWriter.write("START 1 " + nodeName + "\n");
+                newWriter.flush();
+                if(!newReader.readLine().equals("START 1 " + currentNodeName)){
+                    System.out.println("Failed to start communication with " + currentNodeName);
+                    return false;
                 }
-                nodeWriter.write("NEAREST? " + hashID.bytesToHex(currentNodeHash) + "\n");
-                nodeWriter.flush();
-                String response = nodeReader.readLine();
-                int nodeCount = Integer.parseInt(response.split(" ")[1]);
-                for (int i = 0; i < nodeCount; i++) {
-                    String nodeName = nodeReader.readLine();
-                    String nodeAddress = nodeReader.readLine();
-                    if (nodeName.equals(currentNodeName) || visitedNodes.contains(nodeName)) {
-                        continue;
-                    }
-                    visitedNodes.add(nodeName);
-                    int distance = hashID.calculateDistance(hashID.computeHashID(nodeName + "\n"), currentNodeHash);
-                    if (networkMap.containsKey(distance)) {
-                        networkMap.get(distance).put(nodeName, nodeAddress);
-                    } else {
-                        networkMap.put(distance, new HashMap<>());
-                        networkMap.get(distance).put(nodeName, nodeAddress);
-                    }
+                newWriter.write("NOTIFY?\n" + nodeName + "\n" + address + "\n");
+                newWriter.flush();
+                String response = newReader.readLine();
+                if (response.equals("NOTIFIED")) {
+                    System.out.println("Notified " + entry.getKey());
+                } else {
+                    System.out.println("Failed to notify " + entry.getKey());
                 }
+                discoverNetwork(currentDistance + 1, entry.getKey(), entry.getValue(), newSocket, newReader, newWriter, visitedNodes);
+            } catch (Exception e) {
+                System.out.println("Error discovering network: " + e.getMessage());
             }
         }
         return true;

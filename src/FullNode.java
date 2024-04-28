@@ -120,12 +120,14 @@ public class FullNode implements FullNodeInterface{
                         String key = "";
                         String value = "";
                         for(int i = 0; i < keyLines; i++){
-                            key += reader.readLine()+"\n";
+                            key += reader.readLine() + "\n";
                         }
+                        key = key.endsWith("\n") ? key : key + "\n";  // Ensure ends with newline
                         System.out.println("Key:\n" + key);
                         for(int i = 0; i < valueLines; i++){
-                            value += reader.readLine()+"\n";
+                            value += reader.readLine() + "\n";
                         }
+                        value = value.endsWith("\n") ? value : value + "\n";  // Ensure ends with newline
                         System.out.println("Value:\n" + value);
                         byte[] keyHashID = hashID.computeHashID(key);
                         if(!checkIfCloserNodesExist(keyHashID)){
